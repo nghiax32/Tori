@@ -1,6 +1,6 @@
 import { api, createDateInput, createDialog, h } from "@tori/ui";
 import { fmt, todayIso } from "./dates";
-import { KIND_LABEL, ruleLabel, type CalendarKind, type EventSummary, type Kind, type LunarInfo } from "./types";
+import { KIND_LABEL, ruleLabel, type CalendarKind, type EventSummary, type Kind } from "./types";
 
 interface Segmented<T extends string> {
   el: HTMLElement;
@@ -33,6 +33,13 @@ function segmented<T extends string>(
 
 const field = (label: string, control: Node, hint?: Node | string | null) =>
   h("label", { class: "field" }, h("span", {}, label), control, hint ? h("small", { class: "muted" }, hint) : null);
+
+/** Định dạng ô ngày/tháng khi đang gõ: "0503" -> "05/03", "05" -> "05/" */
+function formatDayMonth(raw: string): string {
+  const [d = "", m] = raw.split("/");
+  if (m === undefined) return d.length > 2 ? `${d.slice(0, 2)}/${d.slice(2, 4)}` : d.length === 2 ? `${d}/` : d;
+  return `${d.slice(0, 2)}/${m.slice(0, 2)}`;
+}
 
 const CATEGORIES = ["Sinh nhật", "Ngày giỗ", "Kỷ niệm", "Đi chơi", "Bảo dưỡng", "Sức khoẻ"];
 
@@ -92,49 +99,45 @@ export function openEventForm(opts: { date?: string; onSaved: () => void }): voi
     "solar",
     () => sync(),
   );
-  const lunarMode = segmented<"from-solar" | "direct">(
-    "lunar-mode",
-    [
-      { value: "from-solar", label: "Từ ngày dương gốc" },
-      { value: "direct", label: "Nhập ngày âm" },
-    ],
-    "from-solar",
-    () => sync(),
-  );
-  const lunarPreview = h("small", { class: "lunar-preview muted" });
-  const originInput = createDateInput({
-    // Xem trước ngày âm tương ứng
-    onChange: async (iso) => {
-      lunarPreview.textContent = "";
-      if (!iso) return;
-      try {
-        const l = await api.get<LunarInfo>("/api/lunar", { date: iso });
-        lunarPreview.textContent = `= ${l.label} (năm ${l.year})`;
-      } catch {
-        /* chỉ là xem trước */
-      }
-    },
+  // Một ô chia hai nửa: ngày/tháng (bắt buộc) | năm (không bắt buộc)
+  const dayMonthInput = h("input", {
+    type: "text",
+    inputmode: "numeric",
+    autocomplete: "off",
+    maxlength: 5,
+    placeholder: "dd/mm",
+    "aria-label": "Ngày/tháng",
+  }) as HTMLInputElement;
+  dayMonthInput.addEventListener("input", (e) => {
+    // Tự chèn "/" khi gõ số ở cuối ô; không can thiệp khi đang xoá hoặc sửa giữa chừng
+    if ((e as InputEvent).inputType?.startsWith("delete")) return;
+    if (dayMonthInput.selectionStart !== dayMonthInput.value.length) return;
+    if (/^[\d/]*$/.test(dayMonthInput.value)) dayMonthInput.value = formatDayMonth(dayMonthInput.value);
   });
-  const lunarDay = h("input", { type: "number", min: 1, max: 30, placeholder: "Ngày" }) as HTMLInputElement;
-  const lunarMonth = h("input", { type: "number", min: 1, max: 12, placeholder: "Tháng" }) as HTMLInputElement;
+  const yearInput = h("input", {
+    type: "text",
+    inputmode: "numeric",
+    autocomplete: "off",
+    maxlength: 4,
+    placeholder: "yyyy",
+    "aria-label": "Năm (không bắt buộc)",
+  }) as HTMLInputElement;
   const lunarLeap = h("input", { type: "checkbox" }) as HTMLInputElement;
-  const originHint = h("small", { class: "muted" });
-  const originField = h("label", { class: "field" }, h("span", {}, "Ngày gốc (dương lịch)"), originInput.el, originHint, lunarPreview);
-  const directBox = h(
+  const leapCheck = h("label", { class: "check" }, lunarLeap, "Tháng nhuận");
+  const ruleHint = h("small", { class: "muted" });
+  const ruleField = h(
     "div",
-    { class: "form-row" },
-    field("Ngày âm", lunarDay),
-    field("Tháng âm", lunarMonth),
-    h("label", { class: "check" }, lunarLeap, "Tháng nhuận"),
+    { class: "field" },
+    h("span", { class: "field-label" }, "Ngày"),
+    h("div", { class: "form-row" }, h("div", { class: "split-date" }, dayMonthInput, yearInput), leapCheck),
+    ruleHint,
   );
-  const lunarModeRow = h("div", { class: "field" }, h("span", { class: "field-label" }, "Cách nhập"), lunarMode.el);
   const eventNote = h("textarea", { placeholder: "Ghi chú chung cho sự kiện" }) as HTMLTextAreaElement;
   const annSection = h(
     "div",
     { class: "form-section" },
     h("div", { class: "field" }, h("span", { class: "field-label" }, "Lịch"), calendar.el),
-    lunarModeRow,
-    h("div", { class: "form-stack" }, originField, directBox),
+    ruleField,
     field("Ghi chú", eventNote),
   );
 
@@ -175,14 +178,10 @@ export function openEventForm(opts: { date?: string; onSaved: () => void }): voi
     saveBtn.disabled = selected?.kind === "annual";
 
     const lunar = calendar.value() === "lunar";
-    const direct = lunar && lunarMode.value() === "direct";
-    showIf(lunarModeRow, lunar);
-    showIf(originField, !direct);
-    showIf(directBox, direct);
-    showIf(lunarPreview, lunar);
-    originHint.textContent = lunar
-      ? "VD ngày mất. Sẽ được đổi sang âm lịch và lặp lại theo ngày âm mỗi năm."
-      : "VD ngày sinh. Mỗi năm lặp lại đúng ngày/tháng này.";
+    showIf(leapCheck, lunar);
+    ruleHint.textContent = lunar
+      ? "Nhập ngày âm, VD ngày giỗ 20/12. Năm (âm lịch) không bắt buộc: có năm thì chỉ hiện từ năm đó, bỏ trống thì năm nào cũng hiện."
+      : "VD ngày sinh 15/03. Năm không bắt buộc: có năm thì chỉ hiện từ năm đó, bỏ trống thì năm nào cũng hiện.";
 
     if (!selected) {
       selectedInfo.hidden = true;
@@ -193,7 +192,7 @@ export function openEventForm(opts: { date?: string; onSaved: () => void }): voi
         (selected.last_date ? `, gần nhất ${fmt(selected.last_date)}` : "");
     } else {
       selectedInfo.hidden = false;
-      selectedInfo.textContent = `“${selected.title}” là sự kiện thường niên (${ruleLabel(selected)}). Ngày được tự sinh mỗi năm, không cần thêm.`;
+      selectedInfo.textContent = `“${selected.title}” là sự kiện thường niên (${ruleLabel(selected)}). Sự kiện tự hiện mỗi năm, không cần thêm.`;
     }
   }
 
@@ -316,17 +315,22 @@ export function openEventForm(opts: { date?: string; onSaved: () => void }): voi
         } else {
           body.calendar = calendar.value();
           body.note = eventNote.value.trim() || null;
-          if (calendar.value() === "lunar" && lunarMode.value() === "direct") {
-            const d = Number(lunarDay.value);
-            const m = Number(lunarMonth.value);
-            if (!(d >= 1 && d <= 30 && m >= 1 && m <= 12)) return void (error.textContent = "Ngày âm 1–30, tháng 1–12.");
-            Object.assign(body, { rule_day: d, rule_month: m, rule_leap: lunarLeap.checked });
-          } else {
-            const origin = originInput.value();
-            if (origin === null) return void (error.textContent = BAD_DATE);
-            if (!origin) return void (error.textContent = "Nhập ngày gốc.");
-            body.origin_date = origin;
+          const lunar = calendar.value() === "lunar";
+          const match = dayMonthInput.value.trim().match(/^(\d{1,2})\/(\d{1,2})$/);
+          const [d, m] = match ? [Number(match[1]), Number(match[2])] : [0, 0];
+          if (!(d >= 1 && d <= (lunar ? 30 : 31) && m >= 1 && m <= 12)) {
+            return void (error.textContent = lunar
+              ? "Nhập ngày/tháng âm lịch, ngày 1–30, VD 20/12."
+              : "Nhập ngày/tháng hợp lệ, VD 15/03.");
           }
+          const yearText = yearInput.value.trim();
+          if (yearText && !/^\d{4}$/.test(yearText)) return void (error.textContent = "Năm gồm 4 chữ số, VD 1965.");
+          Object.assign(body, {
+            rule_day: d,
+            rule_month: m,
+            rule_leap: lunar && lunarLeap.checked,
+            rule_year: yearText ? Number(yearText) : null,
+          });
         }
         await api.post("/api/events", body);
       }

@@ -1,6 +1,4 @@
-from datetime import date
-
-from calendar_app.generator import today
+from calendar_app.lunar import lunar_to_solar
 
 
 def test_requires_login(anon_client):
@@ -50,66 +48,71 @@ def test_trip_with_range(client):
     assert bad.status_code == 422
 
 
-def test_annual_solar_generates_current_year(client):
-    year = today().year
-    r = client.post(
-        "/api/events", json={"title": "Sinh nhật mẹ", "kind": "annual", "calendar": "solar", "origin_date": "1965-03-15"}
-    )
-    assert r.status_code == 201
-    body = r.json()
-    assert (body["event"]["rule_month"], body["event"]["rule_day"]) == (3, 15)
-    assert body["occurrence"]["start_date"] == f"{year}-03-15"
-    assert body["occurrence"]["created_by"] == "generator"
-
-    # Không xoá lẻ được, và không thêm tay được
-    assert client.delete(f"/api/occurrences/{body['occurrence']['id']}").status_code == 409
-    assert client.post(f"/api/events/{body['event']['id']}/occurrences", json={"start_date": "2026-01-01"}).status_code == 409
+def _dates(client, event_id, start, end):
+    occs = client.get("/api/occurrences", params={"start": start, "end": end, "event_id": event_id}).json()
+    return [o["start_date"] for o in occs]
 
 
-def test_annual_lunar_from_solar_origin(client):
-    # Mất ngày 06/09/2025 dương = 15/7 âm
+def test_annual_is_one_row_shown_every_year_from_rule_year(client):
     r = client.post(
         "/api/events",
-        json={"title": "Giỗ ông", "kind": "annual", "calendar": "lunar", "origin_date": "2025-09-06"},
+        json={"title": "Sinh nhật mẹ", "kind": "annual", "calendar": "solar", "rule_day": 15, "rule_month": 3, "rule_year": 1965},
     )
     assert r.status_code == 201
-    ev = r.json()["event"]
-    assert (ev["rule_month"], ev["rule_day"], ev["rule_leap"]) == (7, 15, False)
-    assert ev["lunar_label"] == "15/7 âm lịch"
+    event = r.json()["event"]
+    assert (event["rule_month"], event["rule_day"], event["rule_year"]) == (3, 15, 1965)
+    assert event["occurrence_count"] == 0  # không lưu lần nào
+
+    assert _dates(client, event["id"], "1963-01-01", "1967-12-31") == ["1965-03-15", "1966-03-15", "1967-03-15"]
+    occs = client.get("/api/occurrences", params={"start": "2030-03-01", "end": "2030-03-31"}).json()
+    assert [(o["id"], o["start_date"]) for o in occs] == [(None, "2030-03-15")]
+
+    # Không thêm tay được
+    assert client.post(f"/api/events/{event['id']}/occurrences", json={"start_date": "2026-01-01"}).status_code == 409
 
 
-def test_annual_lunar_direct_input(client):
+def test_annual_without_year_shows_every_year(client):
+    r = client.post("/api/events", json={"title": "Kỷ niệm", "kind": "annual", "calendar": "solar", "rule_day": 1, "rule_month": 6})
+    assert r.json()["event"]["rule_year"] is None
+    assert _dates(client, r.json()["event"]["id"], "1900-01-01", "1901-12-31") == ["1900-06-01", "1901-06-01"]
+
+
+def test_annual_lunar_with_lunar_year(client):
+    # 20/12 âm năm 2025 rơi vào 2026 dương; năm âm 2024 (rơi vào 2025 dương) bị bỏ
     r = client.post(
         "/api/events",
-        json={"title": "Giỗ bà", "kind": "annual", "calendar": "lunar", "rule_month": 3, "rule_day": 10},
+        json={"title": "Giỗ ông", "kind": "annual", "calendar": "lunar", "rule_day": 20, "rule_month": 12, "rule_year": 2025},
     )
     assert r.status_code == 201
-    assert r.json()["event"]["origin_date"] is None
+    assert r.json()["event"]["lunar_label"] == "20/12 âm lịch"
+    assert _dates(client, r.json()["event"]["id"], "2025-01-01", "2026-12-31") == [str(lunar_to_solar(20, 12, 2025))]
+
+
+def test_annual_rule_validation(client):
+    base = {"kind": "annual", "rule_day": 29, "rule_month": 2}
+    assert client.post("/api/events", json={**base, "title": "a", "calendar": "solar", "rule_year": 2023}).status_code == 422
+    assert client.post("/api/events", json={**base, "title": "b", "calendar": "solar", "rule_year": 2024}).status_code == 201
+    assert client.post("/api/events", json={**base, "title": "c", "calendar": "solar"}).status_code == 201
+    # 2026 không nhuận tháng 6 âm
+    leap = {"kind": "annual", "calendar": "lunar", "rule_day": 1, "rule_month": 6, "rule_leap": True}
+    assert client.post("/api/events", json={**leap, "title": "d", "rule_year": 2026}).status_code == 422
+    assert client.post("/api/events", json={**leap, "title": "e", "rule_year": 2025}).status_code == 201
+    assert client.post("/api/events", json={"title": "f", "kind": "annual", "calendar": "lunar"}).status_code == 422
 
 
 def test_duplicate_title_with_other_kind_conflicts(client):
-    client.post("/api/events", json={"title": "Sinh nhật bố", "kind": "annual", "calendar": "solar", "origin_date": "1960-01-02"})
+    client.post("/api/events", json={"title": "Sinh nhật bố", "kind": "annual", "calendar": "solar", "rule_day": 2, "rule_month": 1})
     r = client.post("/api/events", json={"title": "sinh nhat bo", "kind": "occasional", "start_date": "2026-01-02"})
     assert r.status_code == 409
     assert "event_id" in r.json()["detail"]
 
 
-def test_rule_change_keeps_customized(client):
-    year = today().year
+def test_rule_change(client):
     r = client.post("/api/events", json={"title": "Kỷ niệm", "kind": "annual", "calendar": "solar", "rule_month": 6, "rule_day": 1})
-    event_id, occ_id = r.json()["event"]["id"], r.json()["occurrence"]["id"]
-
-    # Đổi quy tắc: lần năm nay được tính lại
-    client.patch(f"/api/events/{event_id}", json={"calendar": "solar", "rule_month": 6, "rule_day": 2})
-    occs = client.get("/api/occurrences", params={"start": f"{year}-01-01", "end": f"{year}-12-31", "event_id": event_id}).json()
-    assert [o["start_date"] for o in occs] == [f"{year}-06-02"]
-
-    # Sửa tay rồi đổi quy tắc: lần đã sửa được giữ
-    occ_id = occs[0]["id"]
-    client.patch(f"/api/occurrences/{occ_id}", json={"start_date": f"{year}-06-05", "note": "dời lịch"})
-    client.patch(f"/api/events/{event_id}", json={"calendar": "solar", "rule_month": 6, "rule_day": 3})
-    occs = client.get("/api/occurrences", params={"start": f"{year}-01-01", "end": f"{year}-12-31", "event_id": event_id}).json()
-    assert [(o["start_date"], o["is_customized"]) for o in occs] == [(f"{year}-06-05", True)]
+    event_id = r.json()["event"]["id"]
+    r = client.patch(f"/api/events/{event_id}", json={"calendar": "solar", "rule_month": 6, "rule_day": 2, "rule_year": 2027})
+    assert r.status_code == 200
+    assert _dates(client, event_id, "2026-01-01", "2028-12-31") == ["2027-06-02", "2028-06-02"]
 
 
 def test_users_are_isolated(client, anon_client):
@@ -133,8 +136,3 @@ def test_lunar_range(client):
     # lưới calendar 42 ngày được phép, khoảng quá dài thì không
     assert len(client.get("/api/lunar/range", params={"start": "2026-10-26", "end": "2026-12-06"}).json()) == 42
     assert client.get("/api/lunar/range", params={"start": "2026-01-01", "end": "2026-12-31"}).status_code == 422
-
-
-def test_lunar_endpoint(client):
-    r = client.get("/api/lunar", params={"date": date(2026, 2, 17).isoformat()})
-    assert r.json() == {"day": 1, "month": 1, "year": 2026, "leap": False, "label": "1/1 âm lịch"}

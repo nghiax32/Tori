@@ -28,7 +28,9 @@ class User(Base):
 
 
 class Event(Base):
-    """Định nghĩa sự kiện. Sự kiện thường niên mang quy tắc lặp (calendar/rule_*)."""
+    """Định nghĩa sự kiện. Sự kiện thường niên mang quy tắc lặp (calendar/rule_*) và không lưu lần
+    xảy ra nào: ngày của từng năm được tính khi xem. rule_year là năm bắt đầu (theo lịch của quy tắc),
+    để trống thì năm nào cũng hiện."""
 
     __tablename__ = "events"
     __table_args__ = (
@@ -57,7 +59,7 @@ class Event(Base):
     rule_month: Mapped[int | None]
     rule_day: Mapped[int | None]
     rule_leap: Mapped[bool] = mapped_column(default=False)
-    origin_date: Mapped[date | None]
+    rule_year: Mapped[int | None]
 
     created_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
@@ -71,13 +73,11 @@ class Event(Base):
 
 
 class Occurrence(Base):
-    """Một lần xảy ra cụ thể, luôn là ngày dương lịch."""
+    """Một lần xảy ra của sự kiện không thường xuyên, luôn là ngày dương lịch."""
 
     __tablename__ = "occurrences"
     __table_args__ = (
         CheckConstraint("end_date >= start_date", name="ck_occ_range"),
-        CheckConstraint("created_by IN ('user', 'generator')", name="ck_occ_created_by"),
-        UniqueConstraint("event_id", "cycle_year"),
         Index("ix_occ_range", "start_date", "end_date"),
     )
 
@@ -85,10 +85,7 @@ class Occurrence(Base):
     event_id: Mapped[int] = mapped_column(ForeignKey("events.id", ondelete="CASCADE"))
     start_date: Mapped[date]
     end_date: Mapped[date]
-    cycle_year: Mapped[int | None]
     note: Mapped[str | None]
-    is_customized: Mapped[bool] = mapped_column(default=False)
-    created_by: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.current_timestamp(), onupdate=func.current_timestamp()

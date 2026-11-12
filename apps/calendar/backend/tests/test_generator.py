@@ -6,8 +6,8 @@ from calendar_app.models import Event
 from calendar_app.text import normalize_title
 
 
-def _annual(calendar, month, day, leap=False):
-    return Event(kind="annual", calendar=calendar, rule_month=month, rule_day=day, rule_leap=leap)
+def _annual(calendar, month, day, leap=False, year=None):
+    return Event(kind="annual", calendar=calendar, rule_month=month, rule_day=day, rule_leap=leap, rule_year=year)
 
 
 def test_solar_birthday():
@@ -39,6 +39,14 @@ def test_day_30_in_short_month_uses_29():
     year = 2026
     month = next(m for m in range(1, 13) if lunar_month_length(m, year) == 29)
     assert _lunar_date(year, month, 30, False) == lunar_to_solar(29, month, year)
+
+
+def test_rule_year_hides_earlier_years():
+    assert annual_dates(_annual("solar", 3, 15, year=2027), 2026) == []
+    assert annual_dates(_annual("solar", 3, 15, year=2027), 2027) == [(2027, date(2027, 3, 15))]
+    # rule_year âm lịch: 20/12 âm 2025 (rơi vào 2026 dương) là lần đầu
+    assert annual_dates(_annual("lunar", 12, 20, year=2025), 2025) == []
+    assert [y for y, _ in annual_dates(_annual("lunar", 12, 20, year=2025), 2026)] == [2025]
 
 
 def test_normalize_title():

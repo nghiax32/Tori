@@ -11,7 +11,7 @@ export interface EventSummary {
   rule_month: number | null;
   rule_day: number | null;
   rule_leap: boolean;
-  origin_date: string | null;
+  rule_year: number | null; // năm bắt đầu (năm âm nếu lịch âm); null = năm nào cũng hiện
   archived: boolean;
   occurrence_count: number;
   last_date: string | null;
@@ -19,17 +19,14 @@ export interface EventSummary {
 }
 
 export interface Occurrence {
-  id: number;
+  id: number | null; // null: lần của sự kiện thường niên, tính từ quy tắc nên không sửa/xoá riêng được
   event_id: number;
   title: string;
   kind: Kind;
   category: string | null;
   start_date: string;
   end_date: string;
-  cycle_year: number | null;
   note: string | null;
-  is_customized: boolean;
-  created_by: "user" | "generator";
   lunar_label: string | null;
 }
 
@@ -53,14 +50,6 @@ export interface LunarDay {
   leap: boolean;
   full_moon: boolean;
   holidays: Holiday[];
-}
-
-export interface LunarInfo {
-  day: number;
-  month: number;
-  year: number;
-  leap: boolean;
-  label: string;
 }
 
 export const KIND_LABEL: Record<Kind, string> = {

@@ -1,8 +1,10 @@
 import { api, createDateInput, createDialog, h } from "@tori/ui";
+import { fmt } from "./dates";
 import { KIND_LABEL, type Occurrence } from "./types";
 
-/** Xem/sửa một lần xảy ra, đổi tên hoặc xoá sự kiện. */
+/** Xem/sửa một lần xảy ra, đổi tên hoặc xoá sự kiện. Sự kiện thường niên không có lần riêng: chỉ sửa tên/ghi chú của sự kiện. */
 export function openOccurrenceDialog(occ: Occurrence, opts: { onChanged: () => void }): void {
+  const annual = occ.id === null;
   const titleInput = h("input", { type: "text", value: occ.title, maxlength: 200 }) as HTMLInputElement;
   const startInput = createDateInput({ value: occ.start_date });
   const endInput = createDateInput({ value: occ.end_date });
@@ -13,7 +15,6 @@ export function openOccurrenceDialog(occ: Occurrence, opts: { onChanged: () => v
     h("span", { class: `badge badge--${occ.kind}` }, KIND_LABEL[occ.kind]),
     occ.lunar_label ? h("span", { class: "badge" }, occ.lunar_label) : null,
     occ.category ? h("span", { class: "badge" }, occ.category) : null,
-    occ.is_customized ? h("span", { class: "badge" }, "Đã sửa tay") : null,
   ];
 
   const run = async (fn: () => Promise<unknown>) => {
@@ -52,20 +53,19 @@ export function openOccurrenceDialog(occ: Occurrence, opts: { onChanged: () => v
     [
       h("div", { class: "badges" }, ...badges),
       h("label", { class: "field" }, h("span", {}, "Tên sự kiện"), titleInput),
-      h(
-        "div",
-        { class: "form-row" },
-        h("label", { class: "field" }, h("span", {}, "Từ ngày"), startInput.el),
-        h("label", { class: "field" }, h("span", {}, "Đến ngày"), endInput.el),
-      ),
-      occ.kind === "annual"
-        ? h("small", { class: "muted" }, "Sửa ngày ở đây chỉ áp dụng cho lần này, các năm khác giữ nguyên.")
-        : null,
+      annual
+        ? h("p", { class: "muted" }, `Ngày ${fmt(occ.start_date)}. Sự kiện thường niên lặp lại mỗi năm, không sửa riêng từng năm.`)
+        : h(
+            "div",
+            { class: "form-row" },
+            h("label", { class: "field" }, h("span", {}, "Từ ngày"), startInput.el),
+            h("label", { class: "field" }, h("span", {}, "Đến ngày"), endInput.el),
+          ),
       h("label", { class: "field" }, h("span", {}, "Ghi chú"), noteInput),
       error,
-    ].filter((x): x is HTMLElement => x !== null),
+    ],
     [
-      occ.kind === "occasional" ? deleteOcc : null,
+      annual ? null : deleteOcc,
       deleteEvent,
       h("span", { class: "spacer" }),
       h("button", { class: "btn", type: "button", onclick: () => close() }, "Đóng"),
@@ -81,6 +81,15 @@ export function openOccurrenceDialog(occ: Occurrence, opts: { onChanged: () => v
       const start = startInput.value();
       const end = endInput.value();
       if (!start || !end) throw new Error("Ngày không hợp lệ. Nhập theo dạng ngày/tháng/năm, VD 05/11/2026.");
+      const note = noteInput.value.trim();
+      if (annual) {
+        // Ghi chú của lần thường niên là ghi chú của sự kiện
+        const patch: Record<string, unknown> = {};
+        if (title !== occ.title) patch.title = title;
+        if (note !== (occ.note ?? "")) patch.note = note || null;
+        if (Object.keys(patch).length) await api.patch(`/api/events/${occ.event_id}`, patch);
+        return;
+      }
       if (title !== occ.title) await api.patch(`/api/events/${occ.event_id}`, { title });
 
       const patch: Record<string, unknown> = {};

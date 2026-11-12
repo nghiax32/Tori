@@ -9,7 +9,7 @@ from tori_core import Identity, get_identity
 from calendar_app import generator
 from calendar_app.db import SessionLocal, get_session
 from calendar_app.holidays import holidays_on
-from calendar_app.lunar import LunarDate, solar_to_lunar
+from calendar_app.lunar import LunarDate, lunar_to_solar, solar_to_lunar
 from calendar_app.models import Event, Occurrence, User
 from calendar_app.schemas import (
     CreateResult,
@@ -18,7 +18,6 @@ from calendar_app.schemas import (
     EventUpdate,
     HolidayOut,
     LunarDayOut,
-    LunarOut,
     OccurrenceCreate,
     OccurrenceOut,
     OccurrenceUpdate,
@@ -89,7 +88,7 @@ def _event_out(session: Session, event: Event) -> EventOut:
         rule_month=event.rule_month,
         rule_day=event.rule_day,
         rule_leap=event.rule_leap,
-        origin_date=event.origin_date,
+        rule_year=event.rule_year,
         archived=event.archived_at is not None,
         occurrence_count=count,
         last_date=last,
@@ -107,11 +106,22 @@ def _occ_out(occ: Occurrence) -> OccurrenceOut:
         category=e.category,
         start_date=occ.start_date,
         end_date=occ.end_date,
-        cycle_year=occ.cycle_year,
         note=occ.note,
-        is_customized=occ.is_customized,
-        created_by=occ.created_by,
         lunar_label=_lunar_label(e),
+    )
+
+
+def _annual_out(event: Event, d: date) -> OccurrenceOut:
+    return OccurrenceOut(
+        id=None,
+        event_id=event.id,
+        title=event.title,
+        kind=event.kind,
+        category=event.category,
+        start_date=d,
+        end_date=d,
+        note=event.note,
+        lunar_label=_lunar_label(event),
     )
 
 
@@ -132,26 +142,24 @@ def _get_occurrence(session: Session, user: User, occ_id: int) -> Occurrence:
     return occ
 
 
-def _resolve_rule(rule: RuleIn) -> tuple[str, int, int, bool]:
+def _resolve_rule(rule: RuleIn) -> tuple[str, int, int, bool, int | None]:
     if rule.calendar is None:
         raise HTTPException(status_code=422, detail="Sự kiện thường niên cần chọn lịch dương hoặc âm")
-    month, day, leap = rule.rule_month, rule.rule_day, rule.rule_leap
+    month, day, leap, year = rule.rule_month, rule.rule_day, rule.rule_leap, rule.rule_year
     if month is None or day is None:
-        if rule.origin_date is None:
-            raise HTTPException(status_code=422, detail="Cần nhập ngày gốc hoặc ngày/tháng")
-        if rule.calendar == "lunar":
-            ld = solar_to_lunar(rule.origin_date)
-            return "lunar", ld.month, ld.day, ld.leap
-        return "solar", rule.origin_date.month, rule.origin_date.day, False
+        raise HTTPException(status_code=422, detail="Cần nhập ngày/tháng")
     if rule.calendar == "solar":
         try:
-            date(2000, month, day)  # 2000 là năm nhuận nên 29/2 hợp lệ
+            date(year or 2000, month, day)  # 2000 là năm nhuận nên 29/2 hợp lệ khi không có năm
         except ValueError:
             raise HTTPException(status_code=422, detail="Ngày/tháng dương lịch không hợp lệ") from None
-        return "solar", month, day, False
+        return "solar", month, day, False, year
     if day > 30:
         raise HTTPException(status_code=422, detail="Ngày âm lịch chỉ từ 1 đến 30")
-    return "lunar", month, day, leap
+    if year and lunar_to_solar(day, month, year, leap) is None:
+        label = LunarDate(day, month, year, leap).label()
+        raise HTTPException(status_code=422, detail=f"Năm {year} không có ngày {label}")
+    return "lunar", month, day, leap, year
 
 
 def _check_title_free(session: Session, user: User, norm: str, exclude_id: int | None = None) -> None:
@@ -166,13 +174,13 @@ def _add_occurrence(
     session: Session, event: Event, start: date | None, end: date | None, note: str | None
 ) -> Occurrence:
     if event.kind != "occasional":
-        raise HTTPException(status_code=409, detail="Sự kiện thường niên được sinh tự động mỗi năm")
+        raise HTTPException(status_code=409, detail="Sự kiện thường niên tự lặp lại mỗi năm, không thêm lần riêng")
     if start is None:
         raise HTTPException(status_code=422, detail="Cần nhập ngày bắt đầu")
     end = end or start
     if end < start:
         raise HTTPException(status_code=422, detail="Ngày kết thúc phải sau ngày bắt đầu")
-    occ = Occurrence(event=event, start_date=start, end_date=end, note=note, created_by="user")
+    occ = Occurrence(event=event, start_date=start, end_date=end, note=note)
     session.add(occ)
     session.flush()
     return occ
@@ -235,18 +243,9 @@ def create_event(body: EventCreate, user: UserDep, session: SessionDep, response
     )
     occ: Occurrence | None = None
     if body.kind == "annual":
-        event.calendar, event.rule_month, event.rule_day, event.rule_leap = _resolve_rule(body)
-        event.origin_date = body.origin_date
+        event.calendar, event.rule_month, event.rule_day, event.rule_leap, event.rule_year = _resolve_rule(body)
         session.add(event)
         session.flush()
-        year = generator.today().year
-        generator.generate_for_year(session, year, [event])
-        occ = session.scalar(
-            select(Occurrence)
-            .where(Occurrence.event_id == event.id)
-            .order_by(Occurrence.start_date.desc())
-            .limit(1)
-        )
     else:
         session.add(event)
         session.flush()
@@ -278,17 +277,11 @@ def update_event(event_id: int, body: EventUpdate, user: UserDep, session: Sessi
     if "archived" in fields and body.archived is not None:
         event.archived_at = datetime.now() if body.archived else None
 
-    rule_fields = {"calendar", "rule_month", "rule_day", "rule_leap", "origin_date"}
+    rule_fields = {"calendar", "rule_month", "rule_day", "rule_leap", "rule_year"}
     if fields & rule_fields:
         if event.kind != "annual":
             raise HTTPException(status_code=422, detail="Chỉ sự kiện thường niên có quy tắc lặp")
-        new_rule = _resolve_rule(body)
-        old_rule = (event.calendar, event.rule_month, event.rule_day, event.rule_leap)
-        event.origin_date = body.origin_date
-        if new_rule != old_rule:
-            event.calendar, event.rule_month, event.rule_day, event.rule_leap = new_rule
-            session.flush()
-            generator.regenerate_from_this_year(session, event, generator.today())
+        event.calendar, event.rule_month, event.rule_day, event.rule_leap, event.rule_year = _resolve_rule(body)
     session.commit()
     return _event_out(session, event)
 
@@ -311,23 +304,25 @@ def list_occurrences(
     q: str = "",
     event_id: int | None = None,
 ) -> list[OccurrenceOut]:
-    """Các lần xảy ra giao với khoảng [start, end]. Dùng cho calendar và bộ lọc."""
-    stmt = (
-        select(Occurrence)
-        .join(Event)
-        .where(
-            Event.user_id == user.id,
-            Event.archived_at.is_(None),
-            Occurrence.start_date <= end,
-            Occurrence.end_date >= start,
-        )
-        .order_by(Occurrence.start_date, Occurrence.id)
-    )
+    """Các lần xảy ra giao với khoảng [start, end]. Dùng cho calendar và bộ lọc.
+
+    Sự kiện không thường xuyên lấy từ DB; sự kiện thường niên tính ngày từ quy tắc."""
+    filters = [Event.user_id == user.id, Event.archived_at.is_(None)]
     if q.strip():
-        stmt = stmt.where(Event.title_norm.contains(normalize_title(q), autoescape=True))
+        filters.append(Event.title_norm.contains(normalize_title(q), autoescape=True))
     if event_id is not None:
-        stmt = stmt.where(Occurrence.event_id == event_id)
-    return [_occ_out(o) for o in session.scalars(stmt)]
+        filters.append(Event.id == event_id)
+
+    stmt = select(Occurrence).join(Event).where(*filters, Occurrence.start_date <= end, Occurrence.end_date >= start)
+    result = [_occ_out(o) for o in session.scalars(stmt)]
+
+    annual = session.scalars(select(Event).where(*filters, Event.kind == "annual"))
+    years = range(max(start.year, 1800), min(end.year, 2199) + 1)  # giới hạn của thuật toán âm lịch
+    for event in annual:
+        for year in years:
+            result += [_annual_out(event, d) for _, d in generator.annual_dates(event, year) if start <= d <= end]
+    result.sort(key=lambda o: (o.start_date, o.id is not None, o.id or 0))
+    return result
 
 
 @router.post("/events/{event_id}/occurrences", status_code=201)
@@ -351,8 +346,6 @@ def update_occurrence(occ_id: int, body: OccurrenceUpdate, user: UserDep, sessio
     occ.start_date, occ.end_date = start, end
     if "note" in fields:
         occ.note = body.note or None
-    if occ.event.kind == "annual":
-        occ.is_customized = True  # đã sửa tay -> không bị ghi đè khi đổi quy tắc
     session.commit()
     return _occ_out(occ)
 
@@ -360,21 +353,11 @@ def update_occurrence(occ_id: int, body: OccurrenceUpdate, user: UserDep, sessio
 @router.delete("/occurrences/{occ_id}", status_code=204)
 def delete_occurrence(occ_id: int, user: UserDep, session: SessionDep) -> None:
     occ = _get_occurrence(session, user, occ_id)
-    if occ.event.kind == "annual":
-        # Xoá lẻ sẽ bị tác vụ hằng ngày sinh lại; muốn bỏ thì ẩn (archived) hoặc xoá cả sự kiện.
-        raise HTTPException(status_code=409, detail="Không xoá lẻ được lần của sự kiện thường niên")
     session.delete(occ)
     session.commit()
 
 
 # ---------- âm lịch ----------
-
-
-@router.get("/lunar")
-def to_lunar(d: Annotated[date, Query(alias="date")], _user: UserDep) -> LunarOut:
-    """Đổi một ngày dương sang âm lịch (để form xem trước)."""
-    ld = solar_to_lunar(d)
-    return LunarOut(day=ld.day, month=ld.month, year=ld.year, leap=ld.leap, label=ld.label())
 
 
 @router.get("/lunar/range")

@@ -411,6 +411,25 @@
   min-height: 38px;
   font-size: var(--text-sm);
 }
+/* Ô ngày thường niên: hai nửa ngày/tháng | năm trông như một ô */
+.split-date {
+  display: flex;
+}
+.field .split-date input {
+  min-width: 0;
+}
+.field .split-date input:first-child {
+  flex: 3;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+.field .split-date input:last-child {
+  flex: 2;
+  margin-left: -1px;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+.field .split-date input:focus {
+  position: relative; /* viền focus nằm trên viền của nửa bên cạnh */
+}
 .combo {
   position: relative;
 }
@@ -457,10 +476,6 @@
   border-radius: var(--radius-sm);
   background: var(--accent-soft);
   font-size: var(--text-sm);
-}
-.lunar-preview {
-  min-height: 1.5em; /* giữ chỗ trước khi có kết quả đổi ngày âm */
-  font-weight: 600;
 }
 .badges {
   display: flex;
