@@ -1,0 +1,17 @@
+# ----- Always ignore -----
+.claude/.context-cache/
+.claude/settings.local.json
+
+# ----- Tori -----
+# Bí mật và dữ liệu
+.env
+data/
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Frontend
+node_modules/
+dist/
