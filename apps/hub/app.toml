@@ -1,0 +1,7 @@
+name = "hub"
+title = "Tori"
+description = "Trang chủ, liệt kê các mini app"
+subdomain = ""
+listed = false
+dev_backend_port = 8000
+dev_frontend_port = 5173

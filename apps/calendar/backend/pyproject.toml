@@ -1,0 +1,17 @@
+[project]
+name = "calendar"
+version = "0.1.0"
+description = "Ghi lại sự kiện và các mốc thời gian"
+requires-python = ">=3.12"
+dependencies = ["tori-core", "sqlalchemy>=2.0.36"]
+
+[tool.uv.sources]
+tori-core = { workspace = true }
+
+# Module Python là calendar_app (không đặt "calendar" vì trùng module chuẩn của Python)
+[tool.hatch.build.targets.wheel]
+packages = ["src/calendar_app"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -1,0 +1,18 @@
+[project]
+name = "tori"
+version = "0.1.0"
+description = "Monorepo cho tori: hub + các mini app"
+requires-python = ">=3.12"
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = ["packages/tori-core", "apps/*/backend"]
+
+[dependency-groups]
+dev = ["pytest>=8.3", "httpx>=0.27"]
+
+[tool.pytest.ini_options]
+testpaths = ["packages", "apps", "scripts"]
+addopts = "--import-mode=importlib"

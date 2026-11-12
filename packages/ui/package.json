@@ -1,0 +1,7 @@
+{
+  "name": "@tori/ui",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Style và tiện ích frontend dùng chung. Các app import trực tiếp mã nguồn qua alias @tori/ui (xem vite.config.ts của app).",
+  "type": "module"
+}

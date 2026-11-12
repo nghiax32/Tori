@@ -1,0 +1,14 @@
+# Mỗi subdomain -> một container. TORI_SCHEME=https thì Caddy tự xin chứng chỉ Let's Encrypt.
+# Local (TORI_SCHEME=http, TORI_DOMAIN=localhost): http://localhost, http://calendar.localhost
+
+{$TORI_SCHEME}://{$TORI_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy hub:8000
+}
+
+{$TORI_SCHEME}://calendar.{$TORI_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy calendar:8000
+}
+
+# @new-app-site  (scripts/new_app.py thêm app mới bên dưới)

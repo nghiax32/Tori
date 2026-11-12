@@ -1,0 +1,110 @@
+name: CI / Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch: # chạy tay = build & deploy tất cả app
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --all-packages --frozen
+      - run: uv run pytest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build frontends
+        run: |
+          for d in apps/*/frontend; do
+            echo "::group::$d"
+            (cd "$d" && npm ci --no-fund --no-audit && npm run build)
+            echo "::endgroup::"
+          done
+
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.plan.outputs.apps }}
+      infra: ${{ steps.plan.outputs.infra }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: plan
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            python3 scripts/changed_apps.py --all | tee -a "$GITHUB_OUTPUT"
+          else
+            python3 scripts/changed_apps.py "${{ github.event.pull_request.base.sha || github.event.before }}" "${{ github.sha }}" | tee -a "$GITHUB_OUTPUT"
+          fi
+
+  # Build & deploy chỉ chạy khi đã bật: Settings > Secrets and variables > Actions > Variables: DEPLOY_ENABLED=true
+  build:
+    needs: [test, detect]
+    if: github.event_name != 'pull_request' && vars.DEPLOY_ENABLED == 'true' && needs.detect.outputs.apps != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: ${{ fromJSON(needs.detect.outputs.apps) }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: owner
+        run: echo "lc=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/${{ matrix.app }}/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ steps.owner.outputs.lc }}/tori-${{ matrix.app }}:latest
+            ghcr.io/${{ steps.owner.outputs.lc }}/tori-${{ matrix.app }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
+
+  release:
+    needs: [detect, build]
+    if: >-
+      !cancelled() && !failure() && github.event_name != 'pull_request' && vars.DEPLOY_ENABLED == 'true' &&
+      (needs.detect.outputs.apps != '[]' || needs.detect.outputs.infra == 'true')
+    runs-on: ubuntu-latest
+    env:
+      TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+      - name: Upload compose.yaml + Caddyfile
+        run: |
+          ssh "$TARGET" 'mkdir -p ~/tori/infra'
+          scp compose.yaml "$TARGET:~/tori/compose.yaml"
+          scp infra/Caddyfile "$TARGET:~/tori/infra/Caddyfile"
+      - name: Pull & restart changed apps
+        run: |
+          APPS=$(echo '${{ needs.detect.outputs.apps }}' | jq -r 'join(" ")')
+          ssh "$TARGET" "cd ~/tori && \
+            { [ -z \"$APPS\" ] || docker compose pull $APPS; } && \
+            docker compose up -d --no-build --remove-orphans $APPS caddy && \
+            docker compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile && \
+            docker image prune -f"

@@ -1,0 +1,13 @@
+[project]
+name = "hub"
+version = "0.1.0"
+description = "Trang chủ tori: liệt kê các mini app"
+requires-python = ">=3.12"
+dependencies = ["tori-core"]
+
+[tool.uv.sources]
+tori-core = { workspace = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

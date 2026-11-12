@@ -1,0 +1,339 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+}
+
+/* Thuộc tính hidden luôn thắng các class đặt display (flex/grid...) */
+[hidden] {
+  display: none !important;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: var(--text-md) / 1.5 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.tori-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 var(--space-4);
+}
+
+/* ---------- header ---------- */
+.tori-header {
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+/* Thanh trên cùng trải hết chiều ngang với lề cố định, không theo độ rộng nội dung của từng app,
+   để "Tori" luôn ở cùng một chỗ khi chuyển giữa hub và các app. */
+.tori-header__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 60px;
+  padding: 0 var(--space-5);
+}
+@media (max-width: 640px) {
+  .tori-header__inner {
+    padding: 0 var(--space-4);
+  }
+}
+/* Chữ "Tori": to, đậm, tô màu chuyển sắc */
+.tori-header__brand {
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  text-decoration: none;
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.tori-header__brand:hover {
+  filter: brightness(1.1);
+}
+.tori-header__sep {
+  color: var(--muted);
+}
+.tori-header__app {
+  font-size: var(--text-lg);
+  font-weight: 700;
+}
+.tori-header__spacer {
+  flex: 1;
+}
+.tori-header__user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--muted);
+  min-width: 0;
+}
+.tori-header__user span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tori-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex: none;
+}
+
+/* ---------- controls ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background-color 0.12s,
+    border-color 0.12s,
+    box-shadow 0.12s;
+}
+.btn:hover {
+  background: var(--surface-2);
+  border-color: var(--muted);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-contrast);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.12),
+    0 3px 10px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+.btn-danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 40%, var(--border));
+}
+.btn-danger:hover {
+  background: var(--danger-soft);
+  border-color: var(--danger);
+}
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+.btn-sm {
+  min-height: 34px;
+  padding: 0 var(--space-3);
+}
+/* Nút chỉ có biểu tượng (VD mũi tên) */
+.btn-icon {
+  width: 40px;
+  padding: 0;
+}
+.btn-icon svg {
+  width: 20px;
+  height: 20px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.field > span,
+.field-label {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+.input,
+.field input:not([type="checkbox"]):not([type="radio"]),
+.field select,
+.field textarea {
+  width: 100%;
+  min-height: 40px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+.field textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+
+/* ---------- ô nhập ngày dd/mm/yyyy (date-input.ts) ---------- */
+.date-input {
+  position: relative;
+}
+.date-input input[type="text"] {
+  padding-right: 40px;
+}
+.date-input input[aria-invalid] {
+  border-color: var(--danger);
+}
+.date-input__btn {
+  position: absolute;
+  top: 50%;
+  right: 4px;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.date-input__btn:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+.date-input .date-input__picker {
+  position: absolute !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 1px !important;
+  min-height: 0 !important;
+  height: 1px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  gap: 2px;
+}
+.segmented label {
+  position: relative;
+}
+.segmented input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.segmented span {
+  display: block;
+  padding: 7px var(--space-4);
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--muted);
+}
+.segmented span:hover {
+  color: var(--text);
+}
+.segmented input:checked + span {
+  background: var(--surface);
+  color: var(--accent);
+  font-weight: 700;
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.1),
+    0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.segmented input:focus-visible + span {
+  outline: 2px solid var(--focus);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.muted {
+  color: var(--muted);
+}
+.error-text {
+  color: var(--danger);
+  font-size: var(--text-sm);
+}
+.error-text:empty {
+  display: none;
+}
+
+/* ---------- dialog ---------- */
+dialog.tori-dialog {
+  /* Ghim phía trên thay vì căn giữa: nội dung đổi chiều cao thì phần đầu hộp thoại không nhảy */
+  margin: min(8vh, 64px) auto auto;
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - min(8vh, 64px) - 16px);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+}
+dialog.tori-dialog::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+.tori-dialog__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5);
+}
+.tori-dialog__title {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+.tori-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}

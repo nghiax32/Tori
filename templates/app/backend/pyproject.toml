@@ -1,0 +1,16 @@
+[project]
+name = "__APP_NAME__"
+version = "0.1.0"
+description = "__APP_DESCRIPTION__"
+requires-python = ">=3.12"
+dependencies = ["tori-core"]
+
+[tool.uv.sources]
+tori-core = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/__APP_MODULE__"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

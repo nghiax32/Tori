@@ -1,0 +1,8 @@
+name = "__APP_NAME__"
+title = "__APP_TITLE__"
+description = "__APP_DESCRIPTION__"
+subdomain = "__APP_NAME__"
+icon = "✨"
+listed = true
+dev_backend_port = __BACKEND_PORT__
+dev_frontend_port = __FRONTEND_PORT__

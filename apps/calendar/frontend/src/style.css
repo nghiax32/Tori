@@ -1,0 +1,601 @@
+:root {
+  --annual-bg: #fdebdc;
+  --annual-fg: #8a3b0c;
+  --occ-bg: #dcf1e2;
+  --occ-fg: #1d5e30;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --annual-bg: #4a2a14;
+    --annual-fg: #ffc59a;
+    --occ-bg: #1d3a26;
+    --occ-fg: #9fe0b2;
+  }
+}
+
+/* Lịch cần nhiều chỗ: rộng hơn khung mặc định 1100px */
+.tori-container {
+  max-width: 1400px;
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5) 0 var(--space-6);
+}
+
+/* ---------- toolbar ---------- */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.toolbar__nav,
+.toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.toolbar__actions {
+  flex: 1;
+  justify-content: flex-end;
+}
+.toolbar__search {
+  max-width: 300px;
+}
+/* Ô chọn tháng / năm, trông như tiêu đề */
+.cal-picker {
+  display: flex;
+  gap: var(--space-1);
+  margin-left: var(--space-2);
+}
+.cal-picker select {
+  min-height: 40px;
+  padding: 0 28px 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")
+    no-repeat right 8px center / 14px;
+  color: var(--text);
+  font: inherit;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  appearance: none;
+}
+.cal-picker select:hover {
+  border-color: var(--border-strong);
+  background-color: var(--surface);
+}
+.cal-picker option {
+  font-size: 15px;
+  font-weight: 500;
+}
+
+/* ---------- calendar grid ---------- */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+.cal-wd {
+  padding: 10px 8px;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  color: var(--text);
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+}
+.cal-day {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  /* Cao theo màn hình: 6 tuần lấp phần còn lại, không để thừa khoảng trống bên dưới */
+  min-height: max(110px, calc((100vh - 270px) / 6));
+  padding: 6px 0 8px;
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  cursor: pointer;
+}
+.cal-day:nth-child(7n + 1) {
+  border-left: 0;
+}
+.cal-grid > :nth-child(-n + 14) {
+  border-top: 0;
+}
+.cal-day:hover {
+  background: var(--surface-2);
+}
+/* Ngày của tháng trước / sau: nền xám, nội dung mờ hẳn */
+.cal-day--out {
+  background: var(--surface-2);
+}
+.cal-day--out > * {
+  opacity: 0.35;
+}
+.cal-day--out .cal-day__num {
+  color: var(--muted);
+}
+.cal-day__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-1);
+  margin: 0 6px 2px;
+  min-width: 0;
+}
+.cal-day__dates {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex: none;
+}
+/* Tên ngày lễ ở góc phải ô */
+.cal-day__holiday {
+  min-width: 0;
+  padding-top: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.25;
+  text-align: right;
+  color: var(--accent);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cal-day__holiday--off {
+  color: var(--danger);
+}
+/* Ngày nghỉ lễ: số ngày màu đỏ */
+.cal-day--off .cal-day__num {
+  color: var(--danger);
+}
+/* Ngày âm nhỏ bên dưới ngày dương */
+.cal-day__lunar {
+  padding-left: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--muted);
+}
+.cal-day__lunar--first,
+.cal-day__lunar--full {
+  font-weight: 700;
+  color: var(--annual-fg);
+}
+.cal-day__num {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  margin: 0;
+  padding: 0 5px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.cal-day--today .cal-day__num {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+}
+
+.chip {
+  display: block;
+  width: calc(100% - 8px);
+  margin: 0 4px;
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 5px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.chip--annual {
+  background: var(--annual-bg);
+  color: var(--annual-fg);
+}
+.chip--occasional {
+  background: var(--occ-bg);
+  color: var(--occ-fg);
+}
+.chip--start {
+  width: calc(100% - 4px);
+  margin-right: 0;
+  border-radius: 4px 0 0 4px;
+}
+.chip--mid {
+  width: 100%;
+  margin: 0;
+  border-radius: 0;
+}
+.chip--end {
+  width: calc(100% - 4px);
+  margin-left: 0;
+  border-radius: 0 4px 4px 0;
+}
+.chip:hover {
+  filter: brightness(0.96);
+}
+/* ---------- chú thích màu ---------- */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin-top: calc(-1 * var(--space-2));
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.legend__swatch {
+  width: 12px;
+  height: 12px;
+  border: 1px solid currentColor;
+  border-radius: 3px;
+}
+
+/* ---------- danh sách ngày đang chọn (chỉ màn hẹp) ---------- */
+.agenda {
+  display: none;
+  padding: var(--space-3) var(--space-4);
+}
+.agenda__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.agenda__list {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.agenda__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 0;
+  border-left: 4px solid;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.agenda__item--annual {
+  border-left-color: var(--annual-fg);
+}
+.agenda__item--occasional {
+  border-left-color: var(--occ-fg);
+}
+.agenda__title {
+  font-weight: 600;
+}
+.agenda__meta {
+  font-size: var(--text-sm);
+}
+.agenda__meta:empty {
+  display: none;
+}
+.agenda__lunar {
+  font-size: var(--text-sm);
+}
+.agenda__holidays {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.agenda__holiday {
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.agenda__holiday--off {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.agenda__empty {
+  margin: var(--space-2) 0 0;
+}
+
+/* ---------- kết quả lọc ---------- */
+.results {
+  padding: var(--space-4);
+}
+.results__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-2);
+}
+.results__year {
+  width: auto;
+  min-height: 32px;
+  padding: 2px var(--space-2);
+}
+.results__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.results__item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  width: 100%;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.results__item:hover {
+  background: var(--surface-2);
+}
+.results__date {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  min-width: 96px;
+}
+.results__title {
+  font-weight: 600;
+}
+.results__note {
+  font-size: var(--text-sm);
+}
+
+/* ---------- form ---------- */
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--space-3);
+  align-items: start;
+}
+.form-row > .check {
+  align-self: end;
+}
+/* Các phần thay thế nhau nằm chồng trong một ô lưới: ô cao bằng phần dài nhất */
+.form-stack {
+  display: grid;
+}
+.form-stack > * {
+  grid-area: 1 / 1;
+  align-self: start;
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 38px;
+  font-size: var(--text-sm);
+}
+.combo {
+  position: relative;
+}
+.suggest {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  margin: 4px 0 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+}
+.suggest li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 6px var(--space-2);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.suggest li:hover,
+.suggest li.is-active {
+  background: var(--accent-soft);
+}
+.suggest__title {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.suggest__meta {
+  flex: none;
+  font-size: var(--text-xs);
+  color: var(--muted);
+}
+.selected-info {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  font-size: var(--text-sm);
+}
+.lunar-preview {
+  min-height: 1.5em; /* giữ chỗ trước khi có kết quả đổi ngày âm */
+  font-weight: 600;
+}
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: calc(-1 * var(--space-2));
+}
+.badge {
+  padding: 1px var(--space-2);
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: var(--text-xs);
+}
+.badge--annual {
+  background: var(--annual-bg);
+  color: var(--annual-fg);
+}
+.badge--occasional {
+  background: var(--occ-bg);
+  color: var(--occ-fg);
+}
+.spacer {
+  flex: 1;
+}
+
+/* ---------- đăng nhập ---------- */
+.login-wrap {
+  display: grid;
+  place-items: center;
+  min-height: 70vh;
+}
+.login-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(400px, 100%);
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
+}
+.login-card h1 {
+  margin: 0;
+}
+.login-card p {
+  margin: 0;
+}
+.login-icon {
+  font-size: 40px;
+}
+.login-dev {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px dashed var(--border);
+  text-align: left;
+}
+
+@media (max-width: 640px) {
+  .page {
+    padding-top: var(--space-4);
+  }
+  .toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .toolbar__nav {
+    flex: none;
+  }
+  .toolbar__nav .btn {
+    min-height: 36px;
+    padding: 0 12px;
+  }
+  .toolbar__nav .btn-icon {
+    width: 36px;
+    padding: 0;
+  }
+  .toolbar__nav {
+    flex-wrap: wrap;
+  }
+  .cal-picker {
+    margin-left: 0;
+  }
+  .cal-picker select {
+    min-height: 36px;
+    font-size: 17px;
+  }
+  .cal-day__head {
+    margin: 0 2px 2px;
+  }
+  .cal-day__lunar {
+    padding-left: 3px;
+    font-size: 9.5px;
+  }
+  .cal-day__holiday {
+    display: none; /* màn hẹp: tên ngày lễ xem ở danh sách bên dưới */
+  }
+  .toolbar__actions {
+    width: 100%;
+  }
+  .toolbar__search {
+    flex: 1;
+    min-width: 0;
+    max-width: none;
+  }
+  .cal-day {
+    min-height: 64px;
+    gap: 3px;
+  }
+  .cal-day:hover {
+    background: none;
+  }
+  .cal-day__num {
+    font-size: var(--text-xs);
+  }
+  /* Màn hẹp: sự kiện là vạch màu, tên xem ở danh sách bên dưới */
+  .chip {
+    height: 6px;
+    padding: 0;
+    font-size: 0;
+    line-height: 0;
+    pointer-events: none;
+  }
+  .chip--annual,
+  .chip--occasional {
+    background: currentColor;
+    opacity: 0.75;
+  }
+  .cal-day--selected {
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+  .agenda {
+    display: block;
+  }
+  .results__head {
+    flex-wrap: wrap;
+  }
+}

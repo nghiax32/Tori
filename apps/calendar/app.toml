@@ -1,0 +1,8 @@
+name = "calendar"
+title = "Calendar"
+description = "Ghi lại sự kiện và mốc thời gian: sinh nhật, ngày giỗ (âm lịch), những chuyến đi du lịch..."
+subdomain = "calendar"
+icon = "🕰️"
+listed = true
+dev_backend_port = 8001
+dev_frontend_port = 5174

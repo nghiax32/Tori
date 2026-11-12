@@ -1,0 +1,63 @@
+.hub {
+  padding: var(--space-6) 0;
+}
+.hub__title {
+  margin: 0 0 var(--space-1);
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.hub__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--space-5);
+  margin-top: var(--space-5);
+}
+/* Thẻ app: icon + tên căn giữa, viền rõ, nổi lên khi rê chuột */
+.hub__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-5);
+  border: 1px solid var(--border-strong);
+  color: inherit;
+  text-align: center;
+  text-decoration: none;
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    border-color 0.15s ease;
+}
+.hub__card:hover,
+.hub__card:focus-visible {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  box-shadow:
+    var(--shadow-lg),
+    0 0 0 1px var(--accent);
+}
+.hub__card h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+}
+.hub__card p {
+  align-self: stretch;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  /* căn đều hai bên cho tất cả các dòng, kể cả dòng cuối */
+  text-align: justify;
+  text-align-last: justify;
+}
+.hub__icon {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 20px;
+  background: var(--accent-soft);
+  font-size: 42px;
+  line-height: 1;
+}

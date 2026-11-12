@@ -1,0 +1,93 @@
+import { api, createDateInput, createDialog, h } from "@tori/ui";
+import { KIND_LABEL, type Occurrence } from "./types";
+
+/** Xem/sửa một lần xảy ra, đổi tên hoặc xoá sự kiện. */
+export function openOccurrenceDialog(occ: Occurrence, opts: { onChanged: () => void }): void {
+  const titleInput = h("input", { type: "text", value: occ.title, maxlength: 200 }) as HTMLInputElement;
+  const startInput = createDateInput({ value: occ.start_date });
+  const endInput = createDateInput({ value: occ.end_date });
+  const noteInput = h("textarea", {}, occ.note ?? "") as HTMLTextAreaElement;
+  const error = h("p", { class: "error-text", role: "alert" });
+
+  const badges = [
+    h("span", { class: `badge badge--${occ.kind}` }, KIND_LABEL[occ.kind]),
+    occ.lunar_label ? h("span", { class: "badge" }, occ.lunar_label) : null,
+    occ.category ? h("span", { class: "badge" }, occ.category) : null,
+    occ.is_customized ? h("span", { class: "badge" }, "Đã sửa tay") : null,
+  ];
+
+  const run = async (fn: () => Promise<unknown>) => {
+    error.textContent = "";
+    try {
+      await fn();
+      close();
+      opts.onChanged();
+    } catch (err) {
+      error.textContent = (err as Error).message;
+    }
+  };
+
+  const deleteOcc = h(
+    "button",
+    {
+      class: "btn btn-danger",
+      type: "button",
+      onclick: () => confirm("Xoá lần này?") && run(() => api.del(`/api/occurrences/${occ.id}`)),
+    },
+    "Xoá lần này",
+  );
+  const deleteEvent = h(
+    "button",
+    {
+      class: "btn btn-danger",
+      type: "button",
+      onclick: () =>
+        confirm(`Xoá sự kiện “${occ.title}” và TẤT CẢ các lần của nó?`) && run(() => api.del(`/api/events/${occ.event_id}`)),
+    },
+    "Xoá sự kiện",
+  );
+
+  const { form, close } = createDialog(
+    occ.title,
+    [
+      h("div", { class: "badges" }, ...badges),
+      h("label", { class: "field" }, h("span", {}, "Tên sự kiện"), titleInput),
+      h(
+        "div",
+        { class: "form-row" },
+        h("label", { class: "field" }, h("span", {}, "Từ ngày"), startInput.el),
+        h("label", { class: "field" }, h("span", {}, "Đến ngày"), endInput.el),
+      ),
+      occ.kind === "annual"
+        ? h("small", { class: "muted" }, "Sửa ngày ở đây chỉ áp dụng cho lần này, các năm khác giữ nguyên.")
+        : null,
+      h("label", { class: "field" }, h("span", {}, "Ghi chú"), noteInput),
+      error,
+    ].filter((x): x is HTMLElement => x !== null),
+    [
+      occ.kind === "occasional" ? deleteOcc : null,
+      deleteEvent,
+      h("span", { class: "spacer" }),
+      h("button", { class: "btn", type: "button", onclick: () => close() }, "Đóng"),
+      h("button", { class: "btn btn-primary", type: "submit" }, "Lưu"),
+    ].filter((x): x is HTMLElement => x !== null),
+  );
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    void run(async () => {
+      const title = titleInput.value.trim();
+      if (!title) throw new Error("Tên sự kiện trống.");
+      const start = startInput.value();
+      const end = endInput.value();
+      if (!start || !end) throw new Error("Ngày không hợp lệ. Nhập theo dạng ngày/tháng/năm, VD 05/11/2026.");
+      if (title !== occ.title) await api.patch(`/api/events/${occ.event_id}`, { title });
+
+      const patch: Record<string, unknown> = {};
+      if (start !== occ.start_date) patch.start_date = start;
+      if (end !== occ.end_date) patch.end_date = end;
+      if (noteInput.value.trim() !== (occ.note ?? "")) patch.note = noteInput.value.trim() || null;
+      if (Object.keys(patch).length) await api.patch(`/api/occurrences/${occ.id}`, patch);
+    });
+  });
+}
