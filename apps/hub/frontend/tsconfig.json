@@ -1,20 +1,4 @@
 {
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "types": ["vite/client"],
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "isolatedModules": true,
-    "skipLibCheck": true,
-    "noEmit": true,
-    "paths": {
-      "@tori/ui": ["../../../packages/ui/src/index.ts"],
-      "@tori/ui/*": ["../../../packages/ui/src/*"]
-    }
-  },
+  "extends": "../../../packages/ui/tsconfig.base.json",
   "include": ["src", "../../../packages/ui/src"]
 }
