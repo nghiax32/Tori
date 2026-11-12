@@ -22,6 +22,17 @@ COMPOSE = ROOT / "compose.yaml"
 CADDYFILE = ROOT / "infra" / "Caddyfile"
 NAME_RE = re.compile(r"^[a-z][a-z0-9-]{1,30}$")
 RESERVED = {"hub", "www", "api", "static"}
+# Tên module Python đã có trong workspace, không được dùng lại
+WORKSPACE_MODULES = {"tori_core", "hub"}
+
+
+def module_name(name: str) -> str:
+    """Tên module Python cho app. Trùng module có sẵn của Python (calendar, email...) hoặc của
+    workspace thì thêm hậu tố "_app", vì trùng tên thì `import <module>` sẽ lấy nhầm module kia."""
+    module = name.replace("-", "_")
+    if module in sys.stdlib_module_names or module in WORKSPACE_MODULES:
+        module += "_app"
+    return module
 
 
 def next_ports() -> tuple[int, int]:
@@ -59,7 +70,9 @@ def main() -> None:
     if dest.exists():
         sys.exit(f"apps/{name} đã tồn tại.")
 
-    module = name.replace("-", "_")
+    module = module_name(name)
+    if module != name.replace("-", "_"):
+        print(f"! '{name}' trùng một module có sẵn, module backend sẽ là '{module}'")
     backend_port, frontend_port = next_ports()
     values = {
         "__APP_NAME__": name,

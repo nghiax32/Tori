@@ -103,9 +103,8 @@ Script sẽ:
 Hub tự hiện app mới (đọc `apps/*/app.toml`). Lên server, `pet.tori.com` chạy được ngay nếu
 DNS đã có bản ghi wildcard `*` (xem [docs/deploy.md](docs/deploy.md)).
 
-Tên app chỉ gồm chữ thường, số và dấu `-`. Tránh tên trùng module có sẵn của Python
-(`calendar`, `email`, `json`...): khi đó đổi tên thư mục module trong `backend/src/` và khai báo
-`[tool.hatch.build.targets.wheel] packages` như `apps/calendar/backend/pyproject.toml`.
+Tên app chỉ gồm chữ thường, số và dấu `-`. Nếu tên trùng module có sẵn của Python
+(`calendar`, `email`, `json`...), script tự đặt module backend là `<tên>_app` (VD `calendar_app`).
 
 ## Phần dùng chung
 
