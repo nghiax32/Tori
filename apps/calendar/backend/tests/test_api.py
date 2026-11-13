@@ -48,6 +48,17 @@ def test_trip_with_range(client):
     assert bad.status_code == 422
 
 
+def test_deleting_last_occurrence_deletes_event(client):
+    r = client.post("/api/events", json={"title": "Đi Huế", "kind": "occasional", "start_date": "2026-01-02"})
+    event_id, first = r.json()["event"]["id"], r.json()["occurrence"]["id"]
+    second = client.post(f"/api/events/{event_id}/occurrences", json={"start_date": "2026-07-01"}).json()["id"]
+
+    assert client.delete(f"/api/occurrences/{first}").status_code == 204
+    assert client.get(f"/api/events/{event_id}").json()["occurrence_count"] == 1
+    assert client.delete(f"/api/occurrences/{second}").status_code == 204
+    assert client.get(f"/api/events/{event_id}").status_code == 404
+
+
 def _dates(client, event_id, start, end):
     occs = client.get("/api/occurrences", params={"start": start, "end": end, "event_id": event_id}).json()
     return [o["start_date"] for o in occs]

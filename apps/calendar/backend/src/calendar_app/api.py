@@ -353,7 +353,11 @@ def update_occurrence(occ_id: int, body: OccurrenceUpdate, user: UserDep, sessio
 @router.delete("/occurrences/{occ_id}", status_code=204)
 def delete_occurrence(occ_id: int, user: UserDep, session: SessionDep) -> None:
     occ = _get_occurrence(session, user, occ_id)
+    event = occ.event
     session.delete(occ)
+    session.flush()
+    if not session.scalar(select(func.count()).where(Occurrence.event_id == event.id)):
+        session.delete(event)  # xoá lần cuối cùng thì xoá luôn sự kiện
     session.commit()
 
 

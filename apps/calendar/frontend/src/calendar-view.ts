@@ -89,7 +89,7 @@ export class CalendarView {
     const first = Number(this.yearSelect.options[0]?.value);
     const last = Number(this.yearSelect.options[this.yearSelect.options.length - 1]?.value);
     if (!(this.year >= first + 5 && this.year <= last - 5)) {
-      const from = Math.min(this.year, new Date().getFullYear()) - 30;
+      const from = Math.min(this.year, new Date().getFullYear()) - 100;
       const to = Math.max(this.year, new Date().getFullYear()) + 10;
       this.yearSelect.replaceChildren(
         ...Array.from({ length: to - from + 1 }, (_, i) => h("option", { value: from + i }, `Năm ${from + i}`)),

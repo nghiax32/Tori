@@ -65,8 +65,7 @@ export function openOccurrenceDialog(occ: Occurrence, opts: { onChanged: () => v
       error,
     ],
     [
-      annual ? null : deleteOcc,
-      deleteEvent,
+      annual ? deleteEvent : deleteOcc,
       h("span", { class: "spacer" }),
       h("button", { class: "btn", type: "button", onclick: () => close() }, "Đóng"),
       h("button", { class: "btn btn-primary", type: "submit" }, "Lưu"),
