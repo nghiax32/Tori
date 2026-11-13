@@ -99,16 +99,20 @@ dig +short calendar.tori.com     # cả hai đều ra <IP>
    - **Authorized redirect URIs**, mỗi app có đăng nhập cần một dòng:
 
      ```
+     https://tori.com/api/auth/callback
      https://calendar.tori.com/api/auth/callback
+     http://localhost:5173/api/auth/callback
      http://localhost:5174/api/auth/callback
      ```
 
-     Dòng `localhost` để đăng nhập Google thật khi chạy `npm run dev` ở máy. App mới có đăng
+     Hai dòng `localhost` để đăng nhập Google thật khi chạy `npm run dev` ở máy. App mới có đăng
      nhập thì thêm `https://<app>.tori.com/api/auth/callback`.
 4. Lưu lại **Client ID** và **Client secret** cho bước 5.
 
-Mỗi app có cookie đăng nhập riêng, nên vào app nào lần đầu sẽ đăng nhập app đó (Google nhớ tài
-khoản nên chỉ cần một cú bấm).
+Hub và mọi app dùng chung một cookie đăng nhập (`tori_session`, domain `tori.com`): đăng nhập ở
+hub hay ở app nào cũng là đăng nhập tất cả, đăng xuất cũng vậy. Riêng khi chạy local qua
+`localhost` / `calendar.localhost`, trình duyệt không chia cookie sang subdomain của `localhost`,
+nên mỗi subdomain vẫn đăng nhập riêng.
 
 ## 5. Chuẩn bị thư mục trên VPS
 

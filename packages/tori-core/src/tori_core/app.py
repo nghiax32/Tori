@@ -10,7 +10,7 @@ SESSION_MAX_AGE = 30 * 24 * 3600
 
 
 def create_app(name: str, *, title: str | None = None, lifespan=None) -> FastAPI:
-    """Tạo app FastAPI chuẩn: cookie phiên, /api/health, /api/meta, docs ở /api/docs."""
+    """Tạo app FastAPI chuẩn: cookie phiên (dùng chung mọi app), /api/health, /api/meta, docs ở /api/docs."""
     settings = get_settings()
     app = FastAPI(
         title=title or name,
@@ -22,7 +22,9 @@ def create_app(name: str, *, title: str | None = None, lifespan=None) -> FastAPI
     app.add_middleware(
         SessionMiddleware,
         secret_key=settings.secret_key,
-        session_cookie=f"tori_{name}",
+        # Một cookie chung cho hub và mọi subdomain: đăng nhập/đăng xuất một nơi là áp dụng cho tất cả
+        session_cookie="tori_session",
+        domain=settings.cookie_domain,
         max_age=SESSION_MAX_AGE,
         same_site="lax",
         https_only=settings.tori_scheme == "https",

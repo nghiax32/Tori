@@ -1,5 +1,6 @@
 import { api, h } from "@tori/ui";
 import { fmtRange, monthGrid, spanText, toIso, todayIso, WEEKDAYS } from "./dates";
+import { loadDraft } from "./draft";
 import { openEventForm } from "./event-form";
 import { openOccurrenceDialog } from "./occurrence-dialog";
 import { KIND_LABEL, type LunarDay, type Occurrence, type TrackedItem, type TrackedList } from "./types";
@@ -103,7 +104,18 @@ export class CalendarView {
     const now = new Date();
     this.year = now.getFullYear();
     this.month = now.getMonth();
-    this.filterYear = now.getFullYear();
+    // Tháng đang xem nằm trên URL (?thang=2026-03) để F5 vẫn ở tháng đó
+    const params = new URLSearchParams(location.search);
+    const m = params.get("thang")?.match(/^(\d{4})-(\d{2})$/);
+    if (m && Number(m[2]) >= 1 && Number(m[2]) <= 12) {
+      this.year = Number(m[1]);
+      this.month = Number(m[2]) - 1;
+    }
+    // Ô tìm kiếm cũng nằm trên URL (?tim=du lịch&nam=2025); năm phải nằm trong danh sách chọn năm của bảng kết quả
+    this.query = params.get("tim")?.trim() ?? "";
+    this.resultsOpen = !!this.query;
+    const nam = Number(params.get("nam"));
+    this.filterYear = nam >= now.getFullYear() - 6 && nam <= now.getFullYear() + 1 ? nam : now.getFullYear();
     this.monthSelect.addEventListener("change", () => {
       this.month = Number(this.monthSelect.value);
       void this.reload();
@@ -153,6 +165,7 @@ export class CalendarView {
       type: "search",
       placeholder: "Lọc theo tên hoặc nhãn, VD: du lịch",
       "aria-label": "Lọc theo tên hoặc nhãn sự kiện",
+      value: this.query,
     }) as HTMLInputElement;
     search.addEventListener("input", () => {
       this.resultsOpen = true;
@@ -219,6 +232,24 @@ export class CalendarView {
       ),
     );
     void this.reload();
+
+    // Form đang điền dở trước khi F5
+    const draft = loadDraft();
+    if (draft?.form === "add") openEventForm({ draft, onSaved: () => void this.reload() });
+    else if (draft?.form === "occ") openOccurrenceDialog(draft.occ, { draft, onChanged: () => void this.reload() });
+  }
+
+  /** Ghi tháng đang xem và ô tìm kiếm lên URL; giá trị mặc định (tháng hiện tại, năm nay, ô trống) thì bỏ tham số */
+  private syncUrl(): void {
+    const url = new URL(location.href);
+    const now = new Date();
+    if (this.year === now.getFullYear() && this.month === now.getMonth()) url.searchParams.delete("thang");
+    else url.searchParams.set("thang", `${this.year}-${String(this.month + 1).padStart(2, "0")}`);
+    if (this.query) url.searchParams.set("tim", this.query);
+    else url.searchParams.delete("tim");
+    if (this.query && this.filterYear !== now.getFullYear()) url.searchParams.set("nam", String(this.filterYear));
+    else url.searchParams.delete("nam");
+    history.replaceState(history.state, "", url);
   }
 
   private shift(delta: number): void {
@@ -248,6 +279,7 @@ export class CalendarView {
     const seq = ++this.loadSeq;
     const days = monthGrid(this.year, this.month);
     this.syncPicker();
+    this.syncUrl();
     try {
       const [occs, found, lunar, tracked] = await Promise.all([
         api.get<Occurrence[]>("/api/occurrences", {

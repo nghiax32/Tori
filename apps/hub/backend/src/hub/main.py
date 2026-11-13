@@ -2,9 +2,10 @@ import os
 import tomllib
 from pathlib import Path
 
-from tori_core import create_app, get_settings, mount_frontend
+from tori_core import build_auth_router, create_app, get_settings, mount_frontend
 
 app = create_app("hub", title="Tori")
+app.include_router(build_auth_router())
 
 
 def apps_dir() -> Path:

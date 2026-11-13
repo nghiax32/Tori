@@ -31,7 +31,7 @@ export function renderLogin(root: HTMLElement, cfg: AuthConfig): void {
       h(
         "div",
         { class: "card login-card" },
-        h("div", { class: "login-icon", "aria-hidden": "true" }, "🕰️"),
+        h("div", { class: "login-icon", "aria-hidden": "true" }, "📅"),
         h("h1", {}, "Calendar"),
         h(
           "p",

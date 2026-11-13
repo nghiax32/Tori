@@ -16,8 +16,12 @@ let datalistSeq = 0;
 
 export interface LabelInput {
   el: HTMLElement;
+  /** Ô gõ nhãn */
+  input: HTMLInputElement;
   /** Các nhãn đang gắn (tính cả chữ đang gõ dở) */
   values(): string[];
+  /** Các nhãn đã gắn, không tính chữ đang gõ dở */
+  current(): string[];
 }
 
 /** Ô gắn nhiều nhãn: gõ rồi Enter (hoặc dấu phẩy) để thêm, bấm ✕ hoặc Backspace để gỡ. */
@@ -97,6 +101,8 @@ export function createLabelInput(initial: string[] = []): LabelInput {
 
   return {
     el,
+    input,
+    current: () => [...labels],
     values: () => {
       if (input.value.trim()) add(input.value);
       return [...labels];

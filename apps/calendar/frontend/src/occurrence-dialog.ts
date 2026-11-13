@@ -1,16 +1,17 @@
 import { api, createDateInput, createDialog, h } from "@tori/ui";
 import { fmt } from "./dates";
+import { keepDraft, type OccDraft } from "./draft";
 import { createLabelInput } from "./label-input";
 import { KIND_LABEL, type Occurrence } from "./types";
 
 /** Xem/sửa một lần xảy ra, đổi tên hoặc xoá sự kiện. Sự kiện thường niên không có lần riêng: chỉ sửa tên/ghi chú của sự kiện. */
-export function openOccurrenceDialog(occ: Occurrence, opts: { onChanged: () => void }): void {
+export function openOccurrenceDialog(occ: Occurrence, opts: { draft?: OccDraft; onChanged: () => void }): void {
   const annual = occ.id === null;
   const titleInput = h("input", { type: "text", value: occ.title, maxlength: 200 }) as HTMLInputElement;
   const startInput = createDateInput({ value: occ.start_date });
   const endInput = createDateInput({ value: occ.end_date });
   const noteInput = h("textarea", {}, occ.note ?? "") as HTMLTextAreaElement;
-  const labelInput = createLabelInput(occ.labels);
+  const labelInput = createLabelInput(opts.draft?.labels ?? occ.labels);
   const trackedInput = h("input", { type: "checkbox", checked: occ.tracked }) as HTMLInputElement;
   const error = h("p", { class: "error-text", role: "alert" });
 
@@ -50,7 +51,7 @@ export function openOccurrenceDialog(occ: Occurrence, opts: { onChanged: () => v
     "Xoá sự kiện",
   );
 
-  const { form, close } = createDialog(
+  const { dialog, form, close } = createDialog(
     occ.title,
     [
       h("div", { class: "badges" }, ...badges),
@@ -85,6 +86,28 @@ export function openOccurrenceDialog(occ: Occurrence, opts: { onChanged: () => v
       h("button", { class: "btn btn-primary", type: "submit" }, "Lưu"),
     ].filter((x): x is HTMLElement => x !== null),
   );
+
+  // ----- nháp: F5 giữa chừng vẫn mở lại hộp thoại với dữ liệu đang sửa -----
+  const d = opts.draft;
+  if (d) {
+    titleInput.value = d.title;
+    startInput.input.value = d.start;
+    endInput.input.value = d.end;
+    noteInput.value = d.note;
+    labelInput.input.value = d.labelText;
+    trackedInput.checked = d.tracked;
+  }
+  keepDraft(dialog, form, () => ({
+    form: "occ",
+    occ,
+    title: titleInput.value,
+    start: startInput.input.value,
+    end: endInput.input.value,
+    note: noteInput.value,
+    labels: labelInput.current(),
+    labelText: labelInput.input.value,
+    tracked: trackedInput.checked,
+  }));
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();

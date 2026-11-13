@@ -33,6 +33,12 @@ class Settings(BaseSettings):
     def google_enabled(self) -> bool:
         return bool(self.google_client_id and self.google_client_secret)
 
+    @property
+    def cookie_domain(self) -> str | None:
+        """Domain của cookie đăng nhập: domain gốc để hub và mọi subdomain dùng chung một phiên.
+        localhost: trình duyệt không chia cookie sang *.localhost, nên để mặc định (chỉ host đó)."""
+        return None if self.tori_domain == "localhost" else self.tori_domain
+
     def app_url(self, subdomain: str = "") -> str:
         """URL công khai của một app; subdomain rỗng = trang hub."""
         host = f"{subdomain}.{self.tori_domain}" if subdomain else self.tori_domain

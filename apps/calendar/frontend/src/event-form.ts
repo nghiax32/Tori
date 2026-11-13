@@ -1,11 +1,13 @@
 import { api, createDateInput, createDialog, h } from "@tori/ui";
 import { fmt, todayIso } from "./dates";
+import { keepDraft, type AddDraft } from "./draft";
 import { createLabelInput } from "./label-input";
 import { KIND_LABEL, ruleLabel, type CalendarKind, type EventSummary, type Kind } from "./types";
 
 interface Segmented<T extends string> {
   el: HTMLElement;
   value: () => T;
+  set: (v: T) => void;
 }
 
 function segmented<T extends string>(
@@ -29,6 +31,10 @@ function segmented<T extends string>(
   return {
     el,
     value: () => (el.querySelector<HTMLInputElement>("input:checked")?.value ?? checked) as T,
+    set: (v: T) => {
+      const radio = el.querySelector<HTMLInputElement>(`input[value="${v}"]`);
+      if (radio) radio.checked = true;
+    },
   };
 }
 
@@ -43,7 +49,7 @@ function formatDayMonth(raw: string): string {
 }
 
 /** Form thêm sự kiện. Gõ tên sẽ gợi ý sự kiện đã có; chọn gợi ý = thêm lần mới cho sự kiện đó. */
-export function openEventForm(opts: { date?: string; onSaved: () => void }): void {
+export function openEventForm(opts: { date?: string; draft?: AddDraft; onSaved: () => void }): void {
   let selected: EventSummary | null = null;
 
   // ----- tên + autocomplete -----
@@ -140,7 +146,7 @@ export function openEventForm(opts: { date?: string; onSaved: () => void }): voi
     field("Ghi chú", eventNote),
   );
 
-  const labelInput = createLabelInput();
+  const labelInput = createLabelInput(opts.draft?.labels);
   const labelField = h("div", { class: "field" }, h("span", { class: "field-label" }, "Nhãn"), labelInput.el);
 
   const trackedInput = h("input", { type: "checkbox" }) as HTMLInputElement;
@@ -148,7 +154,7 @@ export function openEventForm(opts: { date?: string; onSaved: () => void }): voi
 
   const error = h("p", { class: "error-text", role: "alert" });
   const saveBtn = h("button", { class: "btn btn-primary", type: "submit" }, "Lưu") as HTMLButtonElement;
-  const { form, close } = createDialog(
+  const { dialog, form, close } = createDialog(
     "Thêm sự kiện",
     [
       h("div", { class: "field combo" }, h("span", { class: "field-label" }, "Tên sự kiện"), titleInput, suggest, selectedInfo),
@@ -346,6 +352,41 @@ export function openEventForm(opts: { date?: string; onSaved: () => void }): voi
       error.textContent = (err as Error).message;
     }
   });
+
+  // ----- nháp: F5 giữa chừng vẫn mở lại form với dữ liệu đang điền -----
+  const d = opts.draft;
+  if (d) {
+    titleInput.value = d.title;
+    selected = d.selected;
+    kind.set(d.kind);
+    startInput.input.value = d.start;
+    endInput.input.value = d.end;
+    occNote.value = d.occNote;
+    calendar.set(d.calendar);
+    dayMonthInput.value = d.dayMonth;
+    yearInput.value = d.year;
+    lunarLeap.checked = d.leap;
+    eventNote.value = d.eventNote;
+    labelInput.input.value = d.labelText;
+    trackedInput.checked = d.tracked;
+  }
+  keepDraft(dialog, form, () => ({
+    form: "add",
+    title: titleInput.value,
+    selected,
+    kind: kind.value(),
+    start: startInput.input.value,
+    end: endInput.input.value,
+    occNote: occNote.value,
+    calendar: calendar.value(),
+    dayMonth: dayMonthInput.value,
+    year: yearInput.value,
+    leap: lunarLeap.checked,
+    eventNote: eventNote.value,
+    labels: labelInput.current(),
+    labelText: labelInput.input.value,
+    tracked: trackedInput.checked,
+  }));
 
   sync();
   titleInput.focus();
