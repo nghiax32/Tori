@@ -5,13 +5,14 @@ export interface EventSummary {
   id: number;
   title: string;
   kind: Kind;
-  category: string | null;
+  labels: string[];
   note: string | null;
   calendar: CalendarKind | null;
   rule_month: number | null;
   rule_day: number | null;
   rule_leap: boolean;
   rule_year: number | null; // năm bắt đầu (năm âm nếu lịch âm); null = năm nào cũng hiện
+  tracked: boolean; // hiện lần gần nhất đã qua / sắp tới ở hai bên lịch
   archived: boolean;
   occurrence_count: number;
   last_date: string | null;
@@ -23,11 +24,24 @@ export interface Occurrence {
   event_id: number;
   title: string;
   kind: Kind;
-  category: string | null;
+  labels: string[];
   start_date: string;
   end_date: string;
   note: string | null;
+  tracked: boolean; // theo sự kiện
   lunar_label: string | null;
+}
+
+export interface TrackedItem {
+  occurrence: Occurrence;
+  /** Sắp tới: số ngày còn lại (0 = hôm nay / đang diễn ra). Đã qua: số ngày kể từ ngày kết thúc. */
+  days: number;
+}
+
+export interface TrackedList {
+  today: string;
+  upcoming: TrackedItem[];
+  past: TrackedItem[];
 }
 
 export interface CreateResult {

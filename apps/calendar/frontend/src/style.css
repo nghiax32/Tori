@@ -13,9 +13,9 @@
   }
 }
 
-/* Lịch cần nhiều chỗ: rộng hơn khung mặc định 1100px */
+/* Lịch và hai cột theo dõi cần nhiều chỗ: rộng hơn khung mặc định 1100px */
 .tori-container {
-  max-width: 1400px;
+  max-width: 1880px;
 }
 
 .page {
@@ -23,6 +23,112 @@
   flex-direction: column;
   gap: var(--space-4);
   padding: var(--space-5) 0 var(--space-6);
+}
+
+/* ---------- bố cục: đã qua | lịch | sắp tới ---------- */
+.page {
+  --tracked-width: 250px; /* bề rộng hai cột theo dõi */
+}
+.cal-layout {
+  display: grid;
+  grid-template-columns: var(--tracked-width) minmax(0, 1fr) var(--tracked-width);
+  gap: var(--space-4);
+  align-items: start;
+}
+.cal-main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+/* ---------- sự kiện theo dõi ---------- */
+.tracked {
+  position: sticky;
+  top: var(--space-4);
+  max-height: calc(100vh - 2 * var(--space-4));
+  overflow: auto;
+  padding: var(--space-3);
+}
+.tracked__head {
+  margin: 0 0 var(--space-2);
+  font-size: 16px;
+  font-weight: 700;
+}
+.tracked__list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.tracked__item {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 0;
+  border-left: 4px solid var(--occ-fg);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.tracked__item--annual {
+  border-left-color: var(--annual-fg);
+}
+.tracked__item:hover {
+  background: var(--accent-soft);
+}
+.tracked__title {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.tracked__days {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.tracked__meta {
+  font-size: var(--text-xs);
+}
+.tracked__empty {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+/* Màn rộng: thanh công cụ thẳng hai mép của lịch (lịch nằm giữa hai cột theo dõi) */
+@media (min-width: 1181px) {
+  .toolbar {
+    padding: 0 calc(var(--tracked-width) + var(--space-4));
+  }
+}
+/* Màn vừa: lịch chiếm cả hàng, hai cột theo dõi xuống dưới */
+@media (max-width: 1180px) {
+  .cal-layout {
+    grid-template-columns: 1fr 1fr;
+  }
+  .cal-main {
+    grid-column: 1 / -1;
+    order: -1;
+  }
+  .tracked {
+    position: static;
+    max-height: none;
+  }
+}
+@media (max-width: 640px) {
+  .cal-layout {
+    grid-template-columns: 1fr;
+  }
+  .tracked--upcoming {
+    order: 0;
+  }
+  .tracked--past {
+    order: 1;
+  }
 }
 
 /* ---------- toolbar ---------- */
@@ -42,9 +148,13 @@
 }
 .toolbar__actions {
   flex: 1;
+  min-width: auto; /* không bóp nhỏ hơn ô tìm kiếm + nút: thiếu chỗ thì xuống dòng */
   justify-content: flex-end;
 }
 .toolbar__search {
+  position: relative;
+  flex: 1;
+  min-width: 200px; /* không đủ chỗ thì xuống dòng thay vì bị bóp nhỏ */
   max-width: 300px;
 }
 /* Ô chọn tháng / năm, trông như tiêu đề */
@@ -235,6 +345,11 @@
 .chip:hover {
   filter: brightness(0.96);
 }
+/* Làn trống: giữ chỗ để sự kiện nhiều ngày nằm thẳng hàng */
+.chip--gap {
+  visibility: hidden;
+  pointer-events: none;
+}
 /* ---------- chú thích màu ---------- */
 .legend {
   display: flex;
@@ -332,7 +447,15 @@
 
 /* ---------- kết quả lọc ---------- */
 .results {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 20;
+  width: min(480px, calc(100vw - 32px));
+  max-height: min(60vh, 520px);
+  overflow: auto;
   padding: var(--space-4);
+  box-shadow: var(--shadow-lg);
 }
 .results__head {
   display: flex;
@@ -411,6 +534,69 @@
   min-height: 38px;
   font-size: var(--text-sm);
 }
+/* Ô gắn nhiều nhãn (label-input.ts) */
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 4px var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: text;
+}
+.tags:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.tags__chips {
+  display: contents;
+}
+.field .tags input[type="text"] {
+  flex: 1;
+  min-width: 120px;
+  min-height: 30px;
+  padding: 0 4px;
+  border: 0;
+  box-shadow: none;
+  outline: none;
+  background: none;
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px 2px 10px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.tag--sm {
+  padding: 0 8px;
+  font-size: var(--text-xs);
+}
+.tag__remove {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.tag__remove:hover {
+  background: rgb(0 0 0 / 0.08);
+}
+
 /* Ô ngày thường niên: hai nửa ngày/tháng | năm trông như một ô */
 .split-date {
   display: flex;
@@ -612,5 +798,10 @@
   }
   .results__head {
     flex-wrap: wrap;
+  }
+  /* Ô tìm kiếm nằm sát trái: bảng kết quả căn theo mép trái để không tràn ra ngoài */
+  .results {
+    left: 0;
+    right: auto;
   }
 }

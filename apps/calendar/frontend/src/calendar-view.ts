@@ -1,8 +1,8 @@
 import { api, h } from "@tori/ui";
-import { fmtRange, monthGrid, toIso, todayIso, WEEKDAYS } from "./dates";
+import { fmtRange, monthGrid, spanText, toIso, todayIso, WEEKDAYS } from "./dates";
 import { openEventForm } from "./event-form";
 import { openOccurrenceDialog } from "./occurrence-dialog";
-import { KIND_LABEL, type LunarDay, type Occurrence } from "./types";
+import { KIND_LABEL, type LunarDay, type Occurrence, type TrackedItem, type TrackedList } from "./types";
 
 const WEEKDAY_NAMES = ["Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"];
 const narrow = () => window.matchMedia("(max-width: 640px)").matches;
@@ -44,6 +44,32 @@ function holidayLabel(l: LunarDay | undefined): HTMLElement | null {
   return h("span", { class: `cal-day__holiday${off ? " cal-day__holiday--off" : ""}`, title: names }, names);
 }
 
+/**
+ * Xếp sự kiện vào các "làn" (hàng) trong từng tuần của lưới, để sự kiện nhiều ngày nằm thẳng một hàng
+ * qua mọi ô nó đi qua. Trả về: ngày -> danh sách theo làn (null = làn trống ở ngày đó, cần giữ chỗ).
+ */
+function layoutLanes(days: string[], occs: Occurrence[]): Map<string, (Occurrence | null)[]> {
+  const slots = new Map<string, (Occurrence | null)[]>(days.map((d) => [d, []]));
+  for (let w = 0; w < days.length; w += 7) {
+    const week = days.slice(w, w + 7);
+    const items = occs
+      .filter((o) => o.start_date <= week[6] && o.end_date >= week[0])
+      // bắt đầu sớm trước; cùng ngày bắt đầu thì sự kiện dài hơn trước
+      .sort((a, b) => a.start_date.localeCompare(b.start_date) || b.end_date.localeCompare(a.end_date));
+    for (const o of items) {
+      const cells = week.filter((d) => o.start_date <= d && d <= o.end_date);
+      let lane = 0;
+      while (cells.some((d) => slots.get(d)![lane])) lane++;
+      for (const d of cells) {
+        const list = slots.get(d)!;
+        while (list.length < lane) list.push(null);
+        list[lane] = o;
+      }
+    }
+  }
+  return slots;
+}
+
 export class CalendarView {
   private year: number;
   private month: number; // 0-11
@@ -65,7 +91,12 @@ export class CalendarView {
   private readonly picker = h("div", { class: "cal-picker" }, this.monthSelect, this.yearSelect);
   private readonly grid = h("div", { class: "cal-grid", role: "grid" });
   private readonly agenda = h("section", { class: "agenda card", "aria-live": "polite" });
+  // Kết quả lọc: bảng nổi dưới ô tìm kiếm, đè lên lịch chứ không đẩy lịch xuống
   private readonly results = h("section", { class: "results card", hidden: true });
+  private resultsOpen = false;
+  // Sự kiện đang theo dõi: đã qua bên trái lịch, sắp tới bên phải
+  private readonly pastPanel = h("aside", { class: "tracked tracked--past card", "aria-label": "Đã qua" });
+  private readonly upcomingPanel = h("aside", { class: "tracked tracked--upcoming card", "aria-label": "Sắp tới" });
   private readonly error = h("p", { class: "error-text", hidden: true });
 
   constructor(private readonly root: HTMLElement) {
@@ -118,17 +149,32 @@ export class CalendarView {
   start(): void {
     let timer: number | undefined;
     const search = h("input", {
-      class: "input toolbar__search",
+      class: "input",
       type: "search",
-      placeholder: "Lọc theo tên, VD: du lịch",
-      "aria-label": "Lọc theo tên sự kiện",
+      placeholder: "Lọc theo tên hoặc nhãn, VD: du lịch",
+      "aria-label": "Lọc theo tên hoặc nhãn sự kiện",
     }) as HTMLInputElement;
     search.addEventListener("input", () => {
+      this.resultsOpen = true;
       clearTimeout(timer);
       timer = window.setTimeout(() => {
         this.query = search.value.trim();
         void this.reload();
       }, 200);
+    });
+
+    const searchBox = h("div", { class: "toolbar__search" }, search, this.results);
+    // Đóng bảng kết quả: bấm ra ngoài hoặc Esc; bấm lại vào ô tìm kiếm thì mở lại
+    const showResults = (open: boolean) => {
+      this.resultsOpen = open;
+      this.results.hidden = !open || !this.query;
+    };
+    search.addEventListener("focus", () => showResults(true));
+    search.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") showResults(false);
+    });
+    document.addEventListener("pointerdown", (e) => {
+      if (!searchBox.contains(e.target as Node) && !(e.target as Element).closest?.("dialog")) showResults(false);
     });
 
     const toolbar = h(
@@ -145,7 +191,7 @@ export class CalendarView {
       h(
         "div",
         { class: "toolbar__actions" },
-        search,
+        searchBox,
         h("button", { class: "btn btn-primary", type: "button", onclick: () => this.openAdd() }, "+ Thêm"),
       ),
     );
@@ -158,7 +204,19 @@ export class CalendarView {
     );
 
     this.root.replaceChildren(
-      h("div", { class: "page" }, toolbar, this.error, this.results, this.grid, legend, this.agenda),
+      h(
+        "div",
+        { class: "page" },
+        toolbar,
+        this.error,
+        h(
+          "div",
+          { class: "cal-layout" },
+          this.pastPanel,
+          h("div", { class: "cal-main" }, this.grid, legend, this.agenda),
+          this.upcomingPanel,
+        ),
+      ),
     );
     void this.reload();
   }
@@ -191,7 +249,7 @@ export class CalendarView {
     const days = monthGrid(this.year, this.month);
     this.syncPicker();
     try {
-      const [occs, found, lunar] = await Promise.all([
+      const [occs, found, lunar, tracked] = await Promise.all([
         api.get<Occurrence[]>("/api/occurrences", {
           start: toIso(days[0]),
           end: toIso(days[days.length - 1]),
@@ -205,6 +263,7 @@ export class CalendarView {
             })
           : Promise.resolve(null),
         this.lunarFor(days),
+        api.get<TrackedList>("/api/tracked"),
       ]);
       if (seq !== this.loadSeq) return; // đã có lần tải mới hơn
       this.error.hidden = true;
@@ -213,6 +272,7 @@ export class CalendarView {
       this.renderGrid(days, occs, lunar);
       this.renderAgenda();
       this.renderResults(found);
+      this.renderTracked(tracked);
     } catch (e) {
       if (seq !== this.loadSeq) return;
       this.error.textContent = `Không tải được dữ liệu: ${(e as Error).message}`;
@@ -223,10 +283,11 @@ export class CalendarView {
   private renderGrid(days: Date[], occs: Occurrence[], lunar: Map<string, LunarDay>): void {
     const today = todayIso();
     const cells: Node[] = WEEKDAYS.map((w) => h("div", { class: "cal-wd", role: "columnheader" }, w));
+    const lanes = layoutLanes(days.map(toIso), occs);
 
     days.forEach((day, i) => {
       const iso = toIso(day);
-      const items = occs.filter((o) => o.start_date <= iso && iso <= o.end_date);
+      const items = lanes.get(iso) ?? [];
       const cls = ["cal-day"];
       if (day.getMonth() !== this.month) cls.push("cal-day--out");
       if (iso === today) cls.push("cal-day--today");
@@ -234,6 +295,7 @@ export class CalendarView {
       if (lunar.get(iso)?.holidays.some((x) => x.off)) cls.push("cal-day--off");
 
       const chips = items.map((o) => {
+        if (!o) return h("span", { class: "chip chip--gap", "aria-hidden": "true" }, " "); // giữ chỗ cho làn trống
         const multi = o.start_date !== o.end_date;
         const isStart = iso === o.start_date;
         const isEnd = iso === o.end_date;
@@ -245,7 +307,9 @@ export class CalendarView {
           {
             class: `chip chip--${o.kind} ${pos}`,
             type: "button",
-            title: `${o.title} · ${fmtRange(o.start_date, o.end_date)}${o.note ? ` · ${o.note}` : ""}`,
+            title: [o.title, fmtRange(o.start_date, o.end_date), o.labels.map((x) => `#${x}`).join(" "), o.note]
+              .filter(Boolean)
+              .join(" · "),
             onclick: (e: Event) => {
               if (narrow()) return; // màn hẹp: chạm = chọn ngày, xem danh sách bên dưới
               e.stopPropagation();
@@ -340,6 +404,40 @@ export class CalendarView {
     );
   }
 
+  private renderTracked(data: TrackedList): void {
+    const item = (x: TrackedItem, future: boolean) => {
+      const o = x.occurrence;
+      let when: string;
+      if (future) {
+        when = x.days === 0 ? (o.start_date < data.today ? "Đang diễn ra" : "Hôm nay") : x.days === 1 ? "Ngày mai" : `còn ${x.days} ngày`;
+      } else {
+        when = x.days === 1 ? "Hôm qua" : `${x.days} ngày trước`;
+      }
+      // Từ 30 ngày trở lên ghi thêm dạng năm/tháng/ngày cho dễ hình dung
+      const span = x.days >= 30 ? (future ? spanText(data.today, o.start_date) : spanText(o.end_date, data.today)) : null;
+      return h(
+        "li",
+        {},
+        h(
+          "button",
+          { class: `tracked__item tracked__item--${o.kind}`, type: "button", onclick: () => this.openOcc(o) },
+          h("span", { class: "tracked__title" }, o.title),
+          h("span", { class: "tracked__days" }, when),
+          h("span", { class: "tracked__meta muted" }, [fmtRange(o.start_date, o.end_date), span].filter(Boolean).join(" · ")),
+        ),
+      );
+    };
+    const fill = (panel: HTMLElement, title: string, items: TrackedItem[], future: boolean, empty: string) =>
+      panel.replaceChildren(
+        h("h2", { class: "tracked__head" }, title),
+        items.length
+          ? h("ul", { class: "tracked__list" }, ...items.map((x) => item(x, future)))
+          : h("p", { class: "muted tracked__empty" }, empty),
+      );
+    fill(this.pastPanel, "Đã qua", data.past, false, "Chưa có sự kiện theo dõi nào đã qua.");
+    fill(this.upcomingPanel, "Sắp tới", data.upcoming, true, "Chưa có. Tích “Theo dõi” khi thêm hoặc sửa sự kiện.");
+  }
+
   private renderResults(found: Occurrence[] | null): void {
     if (!found) {
       this.results.hidden = true;
@@ -374,6 +472,7 @@ export class CalendarView {
                 { class: "results__item", type: "button", onclick: () => this.openOcc(o) },
                 h("span", { class: "results__date" }, fmtRange(o.start_date, o.end_date)),
                 h("span", { class: `results__title results__title--${o.kind}` }, o.title),
+                ...o.labels.map((x) => h("span", { class: "tag tag--sm" }, x)),
                 o.note ? h("span", { class: "results__note muted" }, o.note) : null,
               ),
             ),
@@ -390,6 +489,6 @@ export class CalendarView {
       ),
       list,
     );
-    this.results.hidden = false;
+    this.results.hidden = !this.resultsOpen;
   }
 }

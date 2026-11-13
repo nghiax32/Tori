@@ -21,19 +21,21 @@ class RuleIn(BaseModel):
 class EventCreate(RuleIn):
     title: str = Field(min_length=1, max_length=200)
     kind: Kind
-    category: str | None = Field(default=None, max_length=50)
+    labels: list[str] = []  # gắn cho cả sự kiện; lần đầu tiên cũng mang các nhãn này
     note: str | None = None
     # Lần xảy ra đầu tiên, chỉ dùng cho sự kiện không thường xuyên
     start_date: date | None = None
     end_date: date | None = None
     occurrence_note: str | None = None
+    tracked: bool = False  # theo dõi cả sự kiện
 
 
 class EventUpdate(RuleIn):
     title: str | None = Field(default=None, min_length=1, max_length=200)
-    category: str | None = Field(default=None, max_length=50)
+    labels: list[str] | None = None
     note: str | None = None
     archived: bool | None = None
+    tracked: bool | None = None
 
 
 class OccurrenceCreate(BaseModel):
@@ -46,19 +48,21 @@ class OccurrenceUpdate(BaseModel):
     start_date: date | None = None
     end_date: date | None = None
     note: str | None = None
+    labels: list[str] | None = None  # chỉ đổi nhãn của lần này
 
 
 class EventOut(BaseModel):
     id: int
     title: str
     kind: Kind
-    category: str | None
+    labels: list[str]
     note: str | None
     calendar: CalendarKind | None
     rule_month: int | None
     rule_day: int | None
     rule_leap: bool
     rule_year: int | None
+    tracked: bool
     archived: bool
     occurrence_count: int
     last_date: date | None
@@ -70,11 +74,23 @@ class OccurrenceOut(BaseModel):
     event_id: int
     title: str
     kind: Kind
-    category: str | None
+    labels: list[str]  # thường niên: nhãn của sự kiện; không thường xuyên: nhãn riêng của lần này
     start_date: date
     end_date: date
     note: str | None
+    tracked: bool  # theo sự kiện
     lunar_label: str | None
+
+
+class TrackedItem(BaseModel):
+    occurrence: OccurrenceOut
+    days: int  # sắp tới: số ngày còn lại tới ngày bắt đầu (0 = hôm nay/đang diễn ra); đã qua: số ngày từ ngày kết thúc
+
+
+class TrackedOut(BaseModel):
+    today: date
+    upcoming: list[TrackedItem]  # gần nhất trước
+    past: list[TrackedItem]  # gần nhất trước
 
 
 class CreateResult(BaseModel):

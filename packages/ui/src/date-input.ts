@@ -56,7 +56,14 @@ const CALENDAR_ICON =
  * Ô nhập ngày luôn hiển thị theo kiểu Việt Nam (dd/mm/yyyy), không phụ thuộc ngôn ngữ trình duyệt.
  * Gõ số sẽ tự chèn dấu "/"; nút lịch mở bảng chọn ngày của trình duyệt.
  */
-export function createDateInput(opts: { value?: string; onChange?: (iso: string | null) => void } = {}): DateInput {
+export function createDateInput(
+  opts: {
+    value?: string;
+    onChange?: (iso: string | null) => void;
+    /** Ngày bảng chọn mở ra khi ô đang trống (mặc định: hôm nay), VD "Đến ngày" mở ở "Từ ngày" */
+    pickerStart?: () => string | null;
+  } = {},
+): DateInput {
   const input = h("input", {
     type: "text",
     inputmode: "numeric",
@@ -93,7 +100,7 @@ export function createDateInput(opts: { value?: string; onChange?: (iso: string 
   input.addEventListener("change", emit);
 
   button.addEventListener("click", () => {
-    picker.value = value() || "";
+    picker.value = value() || opts.pickerStart?.() || "";
     try {
       picker.showPicker();
     } catch {

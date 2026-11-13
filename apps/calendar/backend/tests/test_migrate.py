@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, text
 
-from calendar_app.db import _migrate_annual_rows
+from calendar_app.db import _add_tracked, _migrate_annual_rows, _migrate_category
 from calendar_app.models import Base
 
 OLD_SCHEMA = [
@@ -37,3 +37,32 @@ def test_migrate_old_db(tmp_path):
         assert conn.execute(text("SELECT id, event_id, start_date FROM occurrences")).all() == [(2, 3, "2026-05-01")]
         cols = {r[1] for r in conn.execute(text("PRAGMA table_info(occurrences)"))}
         assert "cycle_year" not in cols
+
+
+def test_add_tracked_column(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'old.db'}")
+    with engine.begin() as conn:
+        for sql in OLD_SCHEMA:
+            conn.execute(text(sql))
+        _migrate_annual_rows(conn)
+        _add_tracked(conn)
+        _add_tracked(conn)  # chạy lại không làm gì
+        assert conn.execute(text("SELECT id, tracked FROM events ORDER BY id")).all() == [(1, 0), (2, 0), (3, 0)]
+
+
+def test_migrate_category_to_labels(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path / 'old.db'}")
+    with engine.begin() as conn:
+        for sql in OLD_SCHEMA:
+            conn.execute(text(sql))
+        conn.execute(text("UPDATE events SET category = 'Gia đình' WHERE id IN (1, 3)"))
+        _migrate_annual_rows(conn)
+        _add_tracked(conn)
+    Base.metadata.create_all(engine)
+    with engine.begin() as conn:
+        _migrate_category(conn)
+        _migrate_category(conn)  # chạy lại không làm gì
+        assert conn.execute(text("SELECT id, name FROM labels")).all() == [(1, "Gia đình")]
+        assert conn.execute(text("SELECT * FROM event_labels ORDER BY event_id")).all() == [(1, 1), (3, 1)]
+        assert conn.execute(text("SELECT * FROM occurrence_labels")).all() == [(2, 1)]  # lần của sự kiện 3
+        assert "category" not in {r[1] for r in conn.execute(text("PRAGMA table_info(events)"))}

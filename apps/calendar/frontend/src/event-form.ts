@@ -1,5 +1,6 @@
 import { api, createDateInput, createDialog, h } from "@tori/ui";
 import { fmt, todayIso } from "./dates";
+import { createLabelInput } from "./label-input";
 import { KIND_LABEL, ruleLabel, type CalendarKind, type EventSummary, type Kind } from "./types";
 
 interface Segmented<T extends string> {
@@ -41,8 +42,6 @@ function formatDayMonth(raw: string): string {
   return `${d.slice(0, 2)}/${m.slice(0, 2)}`;
 }
 
-const CATEGORIES = ["Sinh nhật", "Ngày giỗ", "Kỷ niệm", "Đi chơi", "Bảo dưỡng", "Sức khoẻ"];
-
 /** Form thêm sự kiện. Gõ tên sẽ gợi ý sự kiện đã có; chọn gợi ý = thêm lần mới cho sự kiện đó. */
 export function openEventForm(opts: { date?: string; onSaved: () => void }): void {
   let selected: EventSummary | null = null;
@@ -75,7 +74,7 @@ export function openEventForm(opts: { date?: string; onSaved: () => void }): voi
 
   // ----- không thường xuyên -----
   const startInput = createDateInput({ value: opts.date ?? todayIso() });
-  const endInput = createDateInput();
+  const endInput = createDateInput({ pickerStart: () => startInput.value() });
   const occNote = h("textarea", { placeholder: "VD: đi cùng gia đình, ở homestay gần hồ" }) as HTMLTextAreaElement;
   const occSection = h(
     "div",
@@ -141,11 +140,11 @@ export function openEventForm(opts: { date?: string; onSaved: () => void }): voi
     field("Ghi chú", eventNote),
   );
 
-  const categoryInput = h("input", { type: "text", list: "cal-categories", maxlength: 50, placeholder: "Không bắt buộc" }) as HTMLInputElement;
-  const categoryField = field(
-    "Nhãn",
-    h("div", {}, categoryInput, h("datalist", { id: "cal-categories" }, ...CATEGORIES.map((c) => h("option", { value: c })))),
-  );
+  const labelInput = createLabelInput();
+  const labelField = h("div", { class: "field" }, h("span", { class: "field-label" }, "Nhãn"), labelInput.el);
+
+  const trackedInput = h("input", { type: "checkbox" }) as HTMLInputElement;
+  const trackedCheck = h("label", { class: "check" }, trackedInput, "Theo dõi: hiện lần gần nhất đã qua / sắp tới bên cạnh lịch");
 
   const error = h("p", { class: "error-text", role: "alert" });
   const saveBtn = h("button", { class: "btn btn-primary", type: "submit" }, "Lưu") as HTMLButtonElement;
@@ -154,9 +153,10 @@ export function openEventForm(opts: { date?: string; onSaved: () => void }): voi
     [
       h("div", { class: "field combo" }, h("span", { class: "field-label" }, "Tên sự kiện"), titleInput, suggest, selectedInfo),
       kindRow,
-      categoryField,
+      labelField,
       // Hai phần chồng lên nhau trong cùng một ô: form luôn cao bằng phần dài nhất, đổi loại không bị nhảy
       h("div", { class: "form-stack" }, occSection, annSection),
+      trackedCheck,
       error,
     ],
     [h("button", { class: "btn", type: "button", onclick: () => close() }, "Huỷ"), saveBtn],
@@ -172,10 +172,11 @@ export function openEventForm(opts: { date?: string; onSaved: () => void }): voi
   function sync(): void {
     const k = selected ? selected.kind : kind.value();
     kindRow.hidden = !!selected;
-    categoryField.hidden = !!selected;
+    labelField.hidden = !!selected;
     showIf(occSection, k === "occasional" && selected?.kind !== "annual");
     showIf(annSection, k === "annual" && !selected);
     saveBtn.disabled = selected?.kind === "annual";
+    showIf(trackedCheck, !selected); // sự kiện có sẵn: bật/tắt theo dõi trong hộp thoại của nó
 
     const lunar = calendar.value() === "lunar";
     showIf(leapCheck, lunar);
@@ -307,7 +308,12 @@ export function openEventForm(opts: { date?: string; onSaved: () => void }): voi
         if (typeof dates === "string") return void (error.textContent = dates);
         await api.post(`/api/events/${selected.id}/occurrences`, { ...dates, note: occNote.value.trim() || null });
       } else {
-        const body: Record<string, unknown> = { title, kind: kind.value(), category: categoryInput.value.trim() || null };
+        const body: Record<string, unknown> = {
+          title,
+          kind: kind.value(),
+          labels: labelInput.values(),
+          tracked: trackedInput.checked,
+        };
         if (kind.value() === "occasional") {
           const dates = occDates();
           if (typeof dates === "string") return void (error.textContent = dates);

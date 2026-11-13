@@ -8,6 +8,7 @@ from tori_core import make_engine
 
 from calendar_app.lunar import solar_to_lunar
 from calendar_app.models import Base
+from calendar_app.text import clean_title, normalize_title
 
 engine = make_engine("calendar")
 SessionLocal = sessionmaker(engine, expire_on_commit=False)
@@ -41,11 +42,42 @@ def _migrate_annual_rows(conn: Connection) -> None:
         conn.exec_driver_sql("DROP TABLE occurrences_old")
 
 
+def _add_tracked(conn: Connection) -> None:
+    """Thêm cột `tracked` (theo dõi) cho DB tạo trước khi có tính năng này."""
+    if "tracked" not in _columns(conn, "events"):
+        conn.exec_driver_sql("ALTER TABLE events ADD COLUMN tracked BOOLEAN NOT NULL DEFAULT 0")
+
+
+def _migrate_category(conn: Connection) -> None:
+    """Chuyển cột events.category (một nhãn) sang bảng labels: gắn cho sự kiện và mọi lần của nó.
+    Chạy sau create_all (cần bảng labels)."""
+    if "category" not in _columns(conn, "events"):
+        return
+    rows = conn.exec_driver_sql("SELECT id, user_id, category FROM events WHERE category IS NOT NULL AND category != ''")
+    for event_id, user_id, category in list(rows):
+        name, norm = clean_title(category)[:50], normalize_title(category)[:50]
+        conn.exec_driver_sql(
+            "INSERT OR IGNORE INTO labels (user_id, name, name_norm) VALUES (?, ?, ?)", (user_id, name, norm)
+        )
+        (label_id,) = conn.exec_driver_sql(
+            "SELECT id FROM labels WHERE user_id = ? AND name_norm = ?", (user_id, norm)
+        ).one()
+        conn.exec_driver_sql("INSERT OR IGNORE INTO event_labels VALUES (?, ?)", (event_id, label_id))
+        conn.exec_driver_sql(
+            "INSERT OR IGNORE INTO occurrence_labels SELECT id, ? FROM occurrences WHERE event_id = ?",
+            (label_id, event_id),
+        )
+    conn.exec_driver_sql("ALTER TABLE events DROP COLUMN category")
+
+
 def init_db() -> None:
     with engine.begin() as conn:
         if "events" in {row[0] for row in conn.exec_driver_sql("SELECT name FROM sqlite_master WHERE type='table'")}:
             _migrate_annual_rows(conn)
+            _add_tracked(conn)
     Base.metadata.create_all(engine)
+    with engine.begin() as conn:
+        _migrate_category(conn)
 
 
 def get_session() -> Iterator[Session]:

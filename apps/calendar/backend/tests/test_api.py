@@ -1,3 +1,6 @@
+from datetime import timedelta
+
+from calendar_app.generator import today
 from calendar_app.lunar import lunar_to_solar
 
 
@@ -147,3 +150,82 @@ def test_lunar_range(client):
     # lưới calendar 42 ngày được phép, khoảng quá dài thì không
     assert len(client.get("/api/lunar/range", params={"start": "2026-10-26", "end": "2026-12-06"}).json()) == 42
     assert client.get("/api/lunar/range", params={"start": "2026-01-01", "end": "2026-12-31"}).status_code == 422
+
+
+def test_tracked_lists(client):
+    t = today()
+    soon = t + timedelta(days=10)
+    iso = lambda d: d.isoformat()  # noqa: E731
+    annual = client.post(
+        "/api/events",
+        json={"title": "SN", "kind": "annual", "calendar": "solar", "rule_day": soon.day, "rule_month": soon.month, "tracked": True},
+    ).json()["event"]
+    assert annual["tracked"] is True
+    client.post("/api/events", json={"title": "Không theo dõi", "kind": "annual", "calendar": "solar", "rule_day": 1, "rule_month": 1})
+
+    # Về quê nhiều lần: chỉ hiện lần gần nhất đã qua và lần gần nhất sắp tới
+    trip = client.post(
+        "/api/events",
+        json={"title": "Về quê", "kind": "occasional", "start_date": iso(t - timedelta(days=40)), "tracked": True},
+    ).json()["event"]
+    for start, end in [(-20, -3), (5, 7), (30, 31)]:
+        body = {"start_date": iso(t + timedelta(days=start)), "end_date": iso(t + timedelta(days=end))}
+        client.post(f"/api/events/{trip['id']}/occurrences", json=body)
+    client.post("/api/events", json={"title": "Không theo dõi 2", "kind": "occasional", "start_date": iso(t)})
+
+    data = client.get("/api/tracked").json()
+    up = [(x["occurrence"]["title"], x["days"]) for x in data["upcoming"]]
+    past = [(x["occurrence"]["title"], x["days"]) for x in data["past"]]
+    last_year = soon.replace(year=soon.year - 1, day=28 if (soon.month, soon.day) == (2, 29) else soon.day)
+    assert up == [("Về quê", 5), ("SN", 10)]
+    assert past == [("Về quê", 3), ("SN", (t - last_year).days)]
+
+    # Lần đang diễn ra tính là sắp tới, 0 ngày
+    client.post(f"/api/events/{trip['id']}/occurrences", json={"start_date": iso(t - timedelta(days=1)), "end_date": iso(t)})
+    assert client.get("/api/tracked").json()["upcoming"][0]["days"] == 0
+
+    # Bỏ theo dõi cả sự kiện
+    client.patch(f"/api/events/{trip['id']}", json={"tracked": False})
+    client.patch(f"/api/events/{annual['id']}", json={"tracked": False})
+    data = client.get("/api/tracked").json()
+    assert data["upcoming"] == [] and data["past"] == []
+
+
+def test_labels_per_event_and_occurrence(client):
+    r = client.post(
+        "/api/events",
+        json={"title": "Về quê", "kind": "occasional", "start_date": "2026-02-14", "labels": ["Gia đình", "gia dinh", "Tết"]},
+    ).json()
+    ev, first = r["event"], r["occurrence"]
+    assert sorted(ev["labels"]) == ["Gia đình", "Tết"]  # trùng không dấu -> một nhãn
+    assert sorted(first["labels"]) == ["Gia đình", "Tết"]
+
+    # Lần mới chép nhãn của sự kiện; sửa nhãn một lần không ảnh hưởng lần khác
+    second = client.post(f"/api/events/{ev['id']}/occurrences", json={"start_date": "2026-09-01"}).json()
+    assert sorted(second["labels"]) == ["Gia đình", "Tết"]
+    r = client.patch(f"/api/occurrences/{second['id']}", json={"labels": ["Gia đình", "Nghỉ lễ"]})
+    assert sorted(r.json()["labels"]) == ["Gia đình", "Nghỉ lễ"]
+    occs = client.get("/api/occurrences", params={"start": "2026-01-01", "end": "2026-12-31", "event_id": ev["id"]}).json()
+    assert [sorted(o["labels"]) for o in occs] == [["Gia đình", "Tết"], ["Gia đình", "Nghỉ lễ"]]
+    assert sorted(client.get(f"/api/events/{ev['id']}").json()["labels"]) == ["Gia đình", "Tết"]
+
+    # Thường niên: nhãn của sự kiện
+    client.post(
+        "/api/events",
+        json={"title": "Giỗ ông", "kind": "annual", "calendar": "lunar", "rule_day": 10, "rule_month": 3, "labels": ["Gia đình"]},
+    )
+
+    # Tìm theo nhãn (không dấu) hoặc theo tên
+    def search(q):
+        occs = client.get("/api/occurrences", params={"start": "2026-01-01", "end": "2026-12-31", "q": q}).json()
+        return [(o["title"], o["start_date"]) for o in occs]
+
+    assert [t for t, _ in search("gia dinh")] == ["Về quê", "Giỗ ông", "Về quê"]
+    assert search("nghi le") == [("Về quê", "2026-09-01")]
+    assert search("tet") == [("Về quê", "2026-02-14")]
+    assert [t for t, _ in search("gio ong")] == ["Giỗ ông"]
+
+    # Gợi ý nhãn; nhãn không còn dùng thì bị xoá
+    assert client.get("/api/labels").json() == ["Gia đình", "Nghỉ lễ", "Tết"]
+    client.patch(f"/api/occurrences/{second['id']}", json={"labels": []})
+    assert client.get("/api/labels").json() == ["Gia đình", "Tết"]

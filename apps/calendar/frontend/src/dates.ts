@@ -24,6 +24,22 @@ export function fmtRange(start: string, end: string): string {
   return start === end ? fmt(start) : `${fmt(start)} – ${fmt(end)}`;
 }
 
+/** Khoảng cách giữa hai ngày dạng "1 năm 2 tháng 3 ngày" (from <= to). */
+export function spanText(fromIso: string, toIso: string): string {
+  const [y1, m1, d1] = fromIso.split("-").map(Number);
+  const [y2, m2, d2] = toIso.split("-").map(Number);
+  let [y, m, d] = [y2 - y1, m2 - m1, d2 - d1];
+  if (d < 0) {
+    m -= 1;
+    d += new Date(y2, m2 - 1, 0).getDate(); // số ngày của tháng trước tháng `to`
+  }
+  if (m < 0) {
+    y -= 1;
+    m += 12;
+  }
+  return [y && `${y} năm`, m && `${m} tháng`, d && `${d} ngày`].filter(Boolean).join(" ");
+}
+
 export const WEEKDAYS = ["T2", "T3", "T4", "T5", "T6", "T7", "CN"];
 
 /** 42 ngày (6 tuần, bắt đầu thứ Hai) phủ tháng `month` (0-11). */
