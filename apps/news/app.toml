@@ -1,0 +1,8 @@
+name = "news"
+title = "Bản tin"
+description = "Bản tin quốc tế sáng và tối do Claude tổng hợp, lấy tự động từ Gmail"
+subdomain = "news"
+icon = "📰"
+listed = true
+dev_backend_port = 8002
+dev_frontend_port = 5175

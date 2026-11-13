@@ -1,0 +1,21 @@
+[project]
+name = "news"
+version = "0.1.0"
+description = "Bản tin quốc tế sáng và tối do Claude tổng hợp, lấy tự động từ Gmail"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.27",
+    "markdown-it-py>=3.0",
+    "sqlalchemy>=2.0.36",
+    "tori-core",
+]
+
+[tool.uv.sources]
+tori-core = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/news"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -4,6 +4,7 @@ Website cá nhân gồm nhiều mini app dưới một domain:
 
 - `tori.com`: **hub**, trang chủ liệt kê các app
 - `calendar.tori.com`: **Calendar**, ghi sự kiện và mốc thời gian (sinh nhật, ngày giỗ âm lịch, đi du lịch...)
+- `news.tori.com`: **Bản tin**, bản tin quốc tế sáng và tối do Claude tổng hợp, lấy tự động từ Gmail
 - `<app>.tori.com`: các app thêm sau
 
 Mỗi app là một container riêng (FastAPI phục vụ cả API lẫn frontend đã build). Caddy chia
@@ -20,12 +21,14 @@ apps/
     frontend/             # Vite + TypeScript
     Dockerfile
     docs/ideas.md         # ý tưởng chưa làm
+  news/                   # news.tori.com: bản tin lấy từ Gmail (module Python: news)
 packages/
   tori-core/              # Python dùng chung: cấu hình, tạo app, đăng nhập Google, SQLite
   ui/                     # Frontend dùng chung: màu/font (tokens.css), header, dialog, gọi API
 templates/app/            # template cho app mới
 scripts/
   new_app.py              # tạo app mới từ template
+  gmail_auth.py           # lấy refresh token Gmail cho app Bản tin
   changed_apps.py         # CI: xác định app nào cần deploy
 infra/Caddyfile           # subdomain -> container
 compose.yaml              # toàn bộ hệ thống
@@ -40,8 +43,7 @@ Cần có: [uv](https://docs.astral.sh/uv/), Node.js 22, Docker (chỉ cần khi
 ```bash
 cp .env.example .env
 uv sync --all-packages                       # cài Python cho mọi app vào .venv
-(cd apps/calendar/frontend && npm install)
-(cd apps/hub/frontend && npm install)
+for d in apps/*/frontend; do (cd "$d" && npm install); done
 ```
 
 ## Chạy local
@@ -72,6 +74,7 @@ docker compose up -d --build
 
 - Hub: <http://localhost>
 - Calendar: <http://calendar.localhost>
+- Bản tin: <http://news.localhost> (cần cấu hình Gmail, xem [docs/deploy.md](docs/deploy.md) mục 4b)
 
 Chrome và Firefox tự hiểu `*.localhost` là máy mình. Nếu cổng 80 đã bị chiếm, đặt
 `HTTP_PORT=8080` và `PUBLIC_PORT=8080` trong `.env` rồi mở <http://localhost:8080>.
@@ -81,11 +84,16 @@ docker compose logs -f calendar     # xem log
 docker compose down                 # dừng (dữ liệu giữ trong volume)
 ```
 
+Sửa `.env` thì chạy lại `docker compose up -d` (container chỉ đọc `.env` lúc được tạo,
+`docker compose restart` không đọc lại). Sửa `infra/Caddyfile` (VD sau khi thêm app) thì nạp
+lại Caddy: `docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile`; nếu không,
+subdomain mới chỉ hiện trang trắng.
+
 ## Test
 
 ```bash
-uv run pytest                                  # toàn bộ test Python
-(cd apps/calendar/frontend && npm run build)   # kiểm tra kiểu TypeScript + build
+uv run pytest                                                   # toàn bộ test Python
+for d in apps/*/frontend; do (cd "$d" && npm run build); done   # kiểm tra kiểu TypeScript + build
 ```
 
 ## Thêm app mới
@@ -113,7 +121,7 @@ Tên app chỉ gồm chữ thường, số và dấu `-`. Nếu tên trùng modu
 ```python
 from tori_core import build_auth_router, create_app, get_identity, mount_frontend
 
-app = create_app("pet", title="Pet")       # cookie phiên, /api/health, /api/meta, docs ở /api/docs
+app = create_app("pet", title="Pet")       # cookie phiên (dùng chung mọi app), /api/health, /api/meta, docs ở /api/docs
 app.include_router(build_auth_router())    # /api/auth/login, /callback, /me, /logout, /dev-login
 # ... route của app; dùng Depends(get_identity) cho API cần đăng nhập
 mount_frontend(app)                        # luôn để cuối
@@ -125,6 +133,7 @@ Cấu hình đọc từ biến môi trường hoặc `.env`, xem `.env.example`.
 
 ```ts
 import "@tori/ui/style.css";               // màu, font, nút, ô nhập, dialog (tự hỗ trợ dark mode)
+// mountHeader: thanh trên cùng ghim khi cuộn, có đồng hồ giờ VN, người đăng nhập / nút Đăng nhập
 import { api, createDialog, h, mountHeader } from "@tori/ui";
 ```
 

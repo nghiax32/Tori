@@ -12,3 +12,8 @@
 }
 
 # @new-app-site  (scripts/new_app.py thêm app mới bên dưới)
+
+{$TORI_SCHEME}://news.{$TORI_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy news:8000
+}

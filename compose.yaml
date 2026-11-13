@@ -35,10 +35,18 @@ services:
     volumes:
       - calendar_data:/data
 
+  news:
+    <<: *app
+    image: ${IMAGE_PREFIX:-tori}-news:${TAG:-latest}
+    build: { context: ., dockerfile: apps/news/Dockerfile }
+    volumes:
+      - news_data:/data
+
   # @new-app-service  (scripts/new_app.py chèn app mới phía trên dòng này)
 
 volumes:
   caddy_data:
   caddy_config:
   calendar_data:
+  news_data:
   # @new-app-volume

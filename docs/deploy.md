@@ -8,6 +8,7 @@ Bức tranh tổng thể:
 Trình duyệt ──https──> VPS ──> Caddy (cổng 80/443, tự cấp HTTPS)
                                  ├── tori.com          -> container hub
                                  ├── calendar.tori.com -> container calendar (SQLite trong volume)
+                                 ├── news.tori.com     -> container news (SQLite trong volume, đọc Gmail)
                                  └── <app>.tori.com    -> container <app>
 
 GitHub push main ──> Actions: test -> build image app thay đổi -> GHCR -> SSH vào VPS -> restart app đó
@@ -73,7 +74,7 @@ Trong trang quản lý DNS của domain, tạo hai bản ghi:
 | Loại | Tên | Giá trị | Ghi chú |
 |---|---|---|---|
 | A | `@` | `<IP>` | `tori.com` |
-| A | `*` | `<IP>` | mọi subdomain: `calendar.tori.com`, app sau này |
+| A | `*` | `<IP>` | mọi subdomain: `calendar.tori.com`, `news.tori.com`, app sau này |
 
 Nếu dùng Cloudflare: để **DNS only** (đám mây xám), không bật proxy. Caddy cần nhận trực tiếp
 kết nối để xin chứng chỉ HTTPS.
@@ -101,6 +102,7 @@ dig +short calendar.tori.com     # cả hai đều ra <IP>
      ```
      https://tori.com/api/auth/callback
      https://calendar.tori.com/api/auth/callback
+     https://news.tori.com/api/auth/callback
      http://localhost:5173/api/auth/callback
      http://localhost:5174/api/auth/callback
      ```
@@ -113,6 +115,30 @@ Hub và mọi app dùng chung một cookie đăng nhập (`tori_session`, domain
 hub hay ở app nào cũng là đăng nhập tất cả, đăng xuất cũng vậy. Riêng khi chạy local qua
 `localhost` / `calendar.localhost`, trình duyệt không chia cookie sang subdomain của `localhost`,
 nên mỗi subdomain vẫn đăng nhập riêng.
+
+## 4b. Gmail cho app Bản tin
+
+App Bản tin đọc email bản tin do Claude gửi (scheduled task) bằng Gmail API, quyền chỉ đọc. Dùng
+**một Google Cloud project riêng**, không dùng chung project đăng nhập: project này phải chuyển sang
+*In production* (để refresh token không hết hạn sau 7 ngày), còn project đăng nhập giữ ở *Testing*
+để chỉ *Test users* đăng nhập được Tori.
+
+1. Tạo project mới (VD `tori-gmail`), **APIs & Services → Library → Gmail API → Enable**.
+2. **Google Auth Platform**:
+   - **Branding**: tên app, email hỗ trợ, trang chủ, link chính sách quyền riêng tư (bắt buộc để
+     publish; dùng link GitHub của repo cũng được), *Authorized domains* theo các link đó.
+   - **Audience**: External, thêm email Gmail nhận bản tin vào *Test users*, rồi **Publish app**.
+   - **Data access**: thêm scope `https://www.googleapis.com/auth/gmail.readonly`.
+3. **Clients → Create client → Desktop app**, tải file JSON về `~/.config/tori/gmail-client.json`
+   (để ngoài repo, đừng commit).
+4. Ở máy có trình duyệt: `uv run scripts/gmail_auth.py`. Đăng nhập đúng tài khoản Gmail nhận bản
+   tin; gặp "Google hasn't verified this app" thì bấm **Advanced → Go to ... (unsafe) → Allow**.
+   Script in ra 3 dòng `GMAIL_*`: chép vào `.env` ở máy và trên VPS (bước 5).
+
+App quét Gmail lúc 08:00 và 20:00 mỗi ngày (chỉ xét email trong 24 giờ qua; server tắt đúng giờ
+quét thì bỏ qua), trên trang có nút **Quét ngay**. Trang báo "Mất quyền đọc Gmail" khi refresh
+token hỏng (đổi mật khẩu Google, thu hồi quyền...): chạy lại bước 4 rồi cập nhật
+`GMAIL_REFRESH_TOKEN`, sau đó `docker compose up -d news`.
 
 ## 5. Chuẩn bị thư mục trên VPS
 
@@ -134,6 +160,10 @@ SECRET_KEY=<chuỗi vừa tạo>
 GOOGLE_CLIENT_ID=<Client ID>
 GOOGLE_CLIENT_SECRET=<Client secret>
 TIMEZONE=Asia/Ho_Chi_Minh
+GMAIL_CLIENT_ID=<từ scripts/gmail_auth.py, bước 4b>
+GMAIL_CLIENT_SECRET=<như trên>
+GMAIL_REFRESH_TOKEN=<như trên>
+NEWS_OWNER_EMAILS=<email của bạn>
 IMAGE_PREFIX=ghcr.io/<github-user>/tori
 HTTP_PORT=80
 HTTPS_PORT=443
@@ -195,6 +225,7 @@ Kiểm tra:
 ```bash
 curl https://tori.com/api/health              # {"status":"ok","app":"hub"}
 curl https://calendar.tori.com/api/health     # {"status":"ok","app":"calendar"}
+curl https://news.tori.com/api/health         # {"status":"ok","app":"news"}
 ```
 
 Mở <https://tori.com> trên trình duyệt, bấm vào Calendar, đăng nhập Google.
@@ -226,6 +257,7 @@ Các lệnh dưới đây chạy trên VPS trong `~/tori`.
 docker compose ps                          # trạng thái các container
 docker compose logs -f --tail=100 calendar # log của một app
 docker compose restart calendar            # khởi động lại một app
+docker compose up -d news                  # sau khi sửa .env (restart không đọc lại .env)
 docker compose logs caddy | grep -i error  # lỗi HTTPS / proxy
 ```
 
@@ -243,7 +275,8 @@ Lần deploy tiếp theo của CI sẽ đưa app về `latest`.
 
 ### Sao lưu dữ liệu
 
-Dữ liệu mỗi app là một file SQLite trong volume Docker (ví dụ volume `tori_calendar_data`).
+Dữ liệu mỗi app là một file SQLite trong volume Docker (ví dụ volume `tori_calendar_data`,
+`tori_news_data`).
 Sao lưu an toàn khi app đang chạy:
 
 ```bash
@@ -269,5 +302,8 @@ Nên làm định kỳ, ví dụ bằng cron trên VPS, và giữ bản sao ở 
 | Google báo `access_denied` / app chưa được xác minh | Email chưa nằm trong *Test users* | Thêm email ở OAuth consent screen |
 | Job `release` lỗi `Permission denied (publickey)` | Sai `DEPLOY_SSH_KEY` hoặc chưa `ssh-copy-id` | Làm lại bước 6 |
 | Job `release` lỗi `Host key verification failed` | Sai `DEPLOY_KNOWN_HOSTS` | Chạy lại `ssh-keyscan -H <IP>` và cập nhật secret |
+| Bản tin báo `Chưa cấu hình Gmail` dù `.env` đã có `GMAIL_*` | Container tạo trước khi sửa `.env` | `docker compose up -d news` |
+| Bản tin báo `Mất quyền đọc Gmail` | Refresh token hỏng (đổi mật khẩu Google, thu hồi quyền...) | Chạy lại `uv run scripts/gmail_auth.py` (mục 4b), cập nhật `GMAIL_REFRESH_TOKEN`, rồi `docker compose up -d news` |
+| Bản tin báo `Bạn không có quyền xem bản tin này` | Email đăng nhập không nằm trong `NEWS_OWNER_EMAILS` | Thêm email vào `NEWS_OWNER_EMAILS`, rồi `docker compose up -d news` |
 | `docker compose pull` lỗi `denied` / `unauthorized` | VPS chưa đăng nhập GHCR | Làm lại phần GHCR ở bước 5 |
 | Trang hub không hiện app mới | Hub chưa được deploy lại | Kiểm tra app mới có `app.toml` với `listed = true`; chạy tay workflow |
