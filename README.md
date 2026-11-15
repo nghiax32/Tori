@@ -79,6 +79,18 @@ docker compose up -d --build
 Chrome và Firefox tự hiểu `*.localhost` là máy mình. Nếu cổng 80 đã bị chiếm, đặt
 `HTTP_PORT=8080` và `PUBLIC_PORT=8080` trong `.env` rồi mở <http://localhost:8080>.
 
+Với `localhost`, trình duyệt không cho các subdomain dùng chung cookie, nên mỗi app đăng nhập
+riêng (đăng xuất ở hub không đăng xuất calendar). Muốn chạy giống server, dùng domain giả
+`tori.test`:
+
+```bash
+# mỗi app một dòng; app mới thì thêm tên vào dòng này
+echo "127.0.0.1 tori.test calendar.tori.test news.tori.test" | sudo tee -a /etc/hosts
+```
+
+rồi đặt `TORI_DOMAIN=tori.test` trong `.env`, chạy `docker compose up -d` và mở
+<http://tori.test> (hoặc <http://tori.test:8080>).
+
 ```bash
 docker compose logs -f calendar     # xem log
 docker compose down                 # dừng (dữ liệu giữ trong volume)

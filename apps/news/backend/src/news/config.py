@@ -17,7 +17,8 @@ class NewsSettings(BaseSettings):
     gmail_client_secret: str = ""
     gmail_refresh_token: str = ""
 
-    # Bộ lọc tìm email trong Gmail (cú pháp ô tìm kiếm của Gmail); mỗi lần quét thêm "newer_than:1d"
+    # Bộ lọc tìm email trong Gmail (cú pháp ô tìm kiếm của Gmail); mỗi lần quét thêm
+    # "after:<giờ nhận bản tin đầu tiên>" (chưa có bản tin nào: "newer_than:1d")
     news_gmail_query: str = DEFAULT_QUERY
     # Giờ quét mỗi ngày (giờ TIMEZONE), cách nhau bằng dấu phẩy
     news_fetch_times: str = "08:00,20:00"

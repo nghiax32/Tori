@@ -17,7 +17,7 @@ class Bulletin(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     gmail_id: Mapped[str] = mapped_column(String(64), unique=True)
-    edition: Mapped[str] = mapped_column(String(10))  # morning | evening
+    edition: Mapped[str] = mapped_column(String(10))  # morning | evening | weekly
     bulletin_date: Mapped[date] = mapped_column(Date, index=True)
     title: Mapped[str] = mapped_column(String(300))
     body_md: Mapped[str] = mapped_column(Text)

@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.types import Scope
 
 from tori_core.config import get_settings
 
@@ -41,8 +42,24 @@ def create_app(name: str, *, title: str | None = None, lifespan=None) -> FastAPI
     return app
 
 
+class FrontendFiles(StaticFiles):
+    """File frontend đã build, kèm Cache-Control để sau khi build lại trình duyệt không dùng giao diện cũ:
+    - HTML: no-cache, mỗi lần mở trang đều hỏi lại server (không đổi thì chỉ nhận 304);
+    - assets/: tên file có mã hash, mỗi bản build một tên, nên lưu lâu không sợ cũ."""
+
+    async def get_response(self, path: str, scope: Scope):
+        response = await super().get_response(path, scope)
+        if response.status_code in (200, 304):
+            if path.startswith("assets/"):
+                response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            # 304 của Starlette không kèm content-type: ngoài assets/ thì cũng bắt hỏi lại server
+            elif response.status_code == 304 or response.headers.get("content-type", "").startswith("text/html"):
+                response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 def mount_frontend(app: FastAPI, static_dir: Path | None = None) -> None:
     """Phục vụ frontend đã build ở '/'. Gọi SAU khi đã khai báo hết route /api."""
     directory = static_dir or get_settings().static_dir
     if directory and Path(directory).is_dir():
-        app.mount("/", StaticFiles(directory=directory, html=True), name="frontend")
+        app.mount("/", FrontendFiles(directory=directory, html=True), name="frontend")

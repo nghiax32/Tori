@@ -21,3 +21,8 @@ _md.add_render_rule("link_open", _link_open)
 
 def to_html(markdown: str) -> str:
     return _md.render(markdown)
+
+
+def inline_html(markdown: str) -> str:
+    """Một đoạn markdown -> HTML không bọc <p> (dùng cho tiêu đề, nội dung trong thẻ tin)."""
+    return _md.renderInline(markdown.replace("\n", " "))

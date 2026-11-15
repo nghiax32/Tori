@@ -4,6 +4,7 @@ import tempfile
 # Phải đặt trước khi import app: DB test nằm ở thư mục tạm, không đụng tới data/ thật.
 os.environ["DATA_DIR"] = tempfile.mkdtemp(prefix="calendar-test-")
 os.environ["TORI_ENV"] = "dev"
+os.environ["TORI_DOMAIN"] = "localhost"  # không lấy domain trong .env: cookie phải gửi được tới host "testserver"
 os.environ["GOOGLE_CLIENT_ID"] = ""
 os.environ["GOOGLE_CLIENT_SECRET"] = ""
 

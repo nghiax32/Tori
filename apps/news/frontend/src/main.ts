@@ -1,8 +1,9 @@
 import "@tori/ui/style.css";
 import "./style.css";
 import { api, ApiError, getMeta, h, mountHeader, type AuthConfig, type Me } from "@tori/ui";
+import { renderStructured, updatedLine, type Structure } from "./reader";
 
-type Edition = "morning" | "evening";
+type Edition = "morning" | "evening" | "weekly";
 
 interface BulletinSummary {
   id: number;
@@ -13,6 +14,7 @@ interface BulletinSummary {
 
 interface Bulletin extends BulletinSummary {
   html: string;
+  structure: Structure | null;
   received_at: string;
 }
 
@@ -25,7 +27,7 @@ interface Status {
   next_run_at: string | null;
 }
 
-const EDITION: Record<Edition, string> = { morning: "☀️ Sáng", evening: "🌙 Tối" };
+const EDITION: Record<Edition, string> = { morning: "☀️ Sáng", evening: "🌙 Tối", weekly: "📰 Tổng hợp tuần" };
 const WEEKDAYS = ["Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"];
 
 /** "2026-11-13" -> "Thứ sáu, 13/11/2026" */
@@ -51,6 +53,7 @@ class NewsView {
   private selectedId: number | null = null;
   private query = "";
   private loadSeq = 0;
+  private disposeReader: (() => void) | null = null;
   private readonly list = h("nav", { class: "news-list card", "aria-label": "Các bản tin" });
   private readonly reader = h("article", { class: "news-reader card" });
   private readonly status = h("div", { class: "news-status" });
@@ -144,15 +147,24 @@ class NewsView {
       );
       return;
     }
-    // Gom theo ngày: mỗi ngày một dòng, nút Sáng / Tối
-    const days = new Map<string, BulletinSummary[]>();
-    for (const b of this.items) days.set(b.bulletin_date, [...(days.get(b.bulletin_date) ?? []), b]);
+    // Gom theo ngày: mỗi ngày một dòng, nút Sáng / Tối. Tổng hợp tuần là một dòng riêng,
+    // đứng trên ngày cuối tuần (bulletin_date là ngày cuối tuần)
+    const rows = new Map<string, BulletinSummary[]>();
+    for (const b of this.items) {
+      const key = b.edition === "weekly" ? `weekly:${b.id}` : b.bulletin_date;
+      rows.set(key, [...(rows.get(key) ?? []), b]);
+    }
+    const select = (b: BulletinSummary) => {
+      this.selectedId = b.id;
+      this.renderList();
+      void this.loadBulletin(true);
+    };
     this.list.replaceChildren(
       h(
         "ul",
         { class: "news-days" },
-        ...[...days].map(([day, bulletins]) =>
-          h(
+        ...[...rows].map(([day, bulletins]) =>
+          bulletins[0].edition === "weekly" ? this.weeklyRow(bulletins[0], select) : h(
             "li",
             { class: "news-day" },
             h("span", { class: "news-day__date" }, dayLabel(day)),
@@ -169,11 +181,7 @@ class NewsView {
                     class: `news-edition${b.id === this.selectedId ? " is-active" : ""}`,
                     "aria-pressed": b.id === this.selectedId ? "true" : "false",
                     title: b.title,
-                    onclick: () => {
-                      this.selectedId = b.id;
-                      this.renderList();
-                      void this.loadBulletin(true);
-                    },
+                    onclick: () => select(b),
                   },
                   EDITION[edition],
                 );
@@ -181,6 +189,29 @@ class NewsView {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  private weeklyRow(b: BulletinSummary, select: (b: BulletinSummary) => void): HTMLElement {
+    const [y, m, d] = b.bulletin_date.split("-").map(Number);
+    const start = new Date(y, m - 1, d - 6);
+    const range = `${String(start.getDate()).padStart(2, "0")}/${String(start.getMonth() + 1).padStart(2, "0")} – ${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}/${y}`;
+    const active = b.id === this.selectedId;
+    return h(
+      "li",
+      { class: "news-day news-day--weekly" },
+      h(
+        "button",
+        {
+          type: "button",
+          class: `news-weekly${active ? " is-active" : ""}`,
+          "aria-pressed": active ? "true" : "false",
+          title: b.title,
+          onclick: () => select(b),
+        },
+        h("span", { class: "news-weekly__label" }, EDITION.weekly),
+        h("span", { class: "news-weekly__range" }, range),
       ),
     );
   }
@@ -194,11 +225,21 @@ class NewsView {
     const id = this.selectedId;
     const b = await api.get<Bulletin>(`/api/bulletins/${id}`);
     if (id !== this.selectedId) return;
+    this.disposeReader?.();
+    this.disposeReader = null;
     const body = h("div", { class: "news-body" });
-    body.innerHTML = b.html; // HTML do backend dựng từ markdown: đã escape HTML trong bài, chặn link javascript:
+    if (b.structure) {
+      // Bài đã tách mục: mục lục + thẻ tin
+      const view = renderStructured(b.structure);
+      this.disposeReader = view.dispose;
+      body.append(...view.nodes);
+    } else {
+      body.innerHTML = b.html; // HTML do backend dựng từ markdown: đã escape HTML trong bài, chặn link javascript:
+    }
     this.reader.replaceChildren(
       h("h1", { class: "news-title" }, b.title),
       h("p", { class: "muted news-meta" }, `${EDITION[b.edition]} · nhận lúc ${timeLabel(b.received_at)}`),
+      b.structure ? updatedLine(b.structure) ?? "" : "",
       body,
     );
     if (scroll) this.reader.scrollIntoView({ behavior: "smooth", block: "start" });

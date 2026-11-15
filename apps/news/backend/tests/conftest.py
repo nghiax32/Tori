@@ -4,6 +4,7 @@ import tempfile
 # Phải đặt trước khi import app: DB test nằm ở thư mục tạm, không đụng tới data/ thật.
 os.environ["DATA_DIR"] = tempfile.mkdtemp(prefix="news-test-")
 os.environ["TORI_ENV"] = "dev"
+os.environ["TORI_DOMAIN"] = "localhost"  # không lấy domain trong .env: cookie phải gửi được tới host "testserver"
 os.environ["GOOGLE_CLIENT_ID"] = ""
 os.environ["GOOGLE_CLIENT_SECRET"] = ""
 for name in ("GMAIL_CLIENT_ID", "GMAIL_CLIENT_SECRET", "GMAIL_REFRESH_TOKEN", "NEWS_OWNER_EMAILS"):

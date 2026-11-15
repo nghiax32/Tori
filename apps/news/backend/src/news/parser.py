@@ -22,7 +22,7 @@ _SPACES = re.compile(r"\s+")
 
 @dataclass(frozen=True)
 class ParsedBulletin:
-    edition: str  # morning | evening
+    edition: str  # morning | evening | weekly
     bulletin_date: date
     title: str
     body_md: str
@@ -70,6 +70,8 @@ def extract_markdown(html: str) -> str:
 
 def _edition(title: str, received_local: datetime) -> str:
     t = normalize(title)
+    if "tong hop tuan" in t:
+        return "weekly"
     if "buoi toi" in t:
         return "evening"
     if "buoi sang" in t:

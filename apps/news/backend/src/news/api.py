@@ -1,5 +1,5 @@
 from datetime import UTC, date, datetime
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
@@ -13,6 +13,7 @@ from news.db import get_session
 from news.models import Bulletin, SyncState
 from news.parser import normalize
 from news.render import to_html
+from news.structure import refang, structure
 
 router = APIRouter(prefix="/api", tags=["news"])
 SessionDep = Annotated[Session, Depends(get_session)]
@@ -41,6 +42,7 @@ class BulletinSummary(BaseModel):
 
 class BulletinOut(BulletinSummary):
     html: str
+    structure: dict[str, Any] | None  # các mục và các tin đã tách; None: trang hiện `html` như cũ
     received_at: datetime
 
 
@@ -59,9 +61,10 @@ def _utc(dt: datetime | None) -> datetime | None:
 
 @router.get("/bulletins")
 def list_bulletins(_: OwnerDep, session: SessionDep, q: str = "", limit: int = 200) -> list[BulletinSummary]:
-    """Mới nhất trước; trong một ngày bản tối đứng trước bản sáng."""
+    """Mới nhất trước; trong một ngày: tổng hợp tuần, bản tối, rồi bản sáng."""
     stmt = select(Bulletin).order_by(
-        Bulletin.bulletin_date.desc(), case((Bulletin.edition == "evening", 0), else_=1)
+        Bulletin.bulletin_date.desc(),
+        case((Bulletin.edition == "weekly", 0), (Bulletin.edition == "evening", 1), else_=2),
     )
     for word in normalize(q).split():
         stmt = stmt.where(Bulletin.search_text.contains(word, autoescape=True))
@@ -78,7 +81,8 @@ def get_bulletin(bulletin_id: int, _: OwnerDep, session: SessionDep) -> Bulletin
         edition=b.edition,
         bulletin_date=b.bulletin_date,
         title=b.title,
-        html=to_html(b.body_md),
+        html=to_html(refang(b.body_md)),
+        structure=structure(b.body_md),
         received_at=_utc(b.received_at),
     )
 

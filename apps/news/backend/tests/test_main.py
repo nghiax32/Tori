@@ -1,4 +1,4 @@
-from datetime import date, datetime, time
+from datetime import UTC, date, datetime, time
 from email.message import EmailMessage
 from html import escape
 from zoneinfo import ZoneInfo
@@ -79,6 +79,22 @@ def test_parse_evening_and_fallbacks():
     assert (b.edition, b.bulletin_date) == ("evening", date(2026, 11, 14))
 
 
+def test_parse_weekly_and_list_order(client):
+    weekly = "⚡ Bản tin quốc tế tổng hợp tuần — 09/11 đến 15/11/2026\n\n## Tuần qua trong 5 điểm\n\nTin."
+    b = parse_message(make_email(weekly, date="Sun, 15 Nov 2026 13:09:57 +0000"), TZ)
+    assert (b.edition, b.bulletin_date) == ("weekly", date(2026, 11, 15))  # ngày cuối tuần
+
+    evening = "⚡ Bản tin quốc tế buổi tối — Chủ Nhật, 15/11/2026\n\nTin tối."
+    source = FakeSource(
+        {
+            "w": make_email(weekly, date="Sun, 15 Nov 2026 13:09:57 +0000"),
+            "e": make_email(evening, date="Sun, 15 Nov 2026 12:43:24 +0000"),
+        }
+    )
+    assert sync.run_sync(source).last_added == 2  # bản tuần không thay bản tối Chủ nhật
+    assert [i["edition"] for i in client.get("/api/bulletins").json()] == ["weekly", "evening"]
+
+
 def test_parse_skips_other_mail():
     assert parse_message(make_email("Báo cáo tuần\n\nKhông phải bản tin"), TZ) is None
 
@@ -106,7 +122,19 @@ def test_run_sync_records_status_and_adds_newer_than():
     source = FakeSource({"m1": make_email(MORNING)})
     state = sync.run_sync(source)
     assert (state.last_ok, state.last_added, state.last_error) == (True, 1, None)
-    assert source.queries[0].endswith("newer_than:1d")
+    assert source.queries[0].endswith("newer_than:1d")  # chưa có bản tin nào: chỉ lấy 24 giờ qua
+
+
+def test_run_sync_catches_up_missed_bulletins():
+    # Lỡ các lần quét (server tắt): lần sau tìm từ bản tin đầu tiên đã lưu, lấy lại cả bản tin
+    # cũ hơn bản mới nhất (VD: đã có sáng 13 và sáng 15, thiếu tối 13)
+    sync.run_sync(FakeSource({"m1": make_email(MORNING)}))  # nhận 01:15:22 UTC 13/11
+    later = make_email("⚡ Bản tin quốc tế buổi sáng — 15/11/2026\n\nTin.", date="Sun, 15 Nov 2026 00:42:28 +0000")
+    sync.run_sync(FakeSource({"m3": later}))
+    source = FakeSource({"m3": later, "e1": make_email(EVENING), "m1": make_email(MORNING)})
+    assert sync.run_sync(source).last_added == 1  # chỉ tối 13; m1, m3 đã có
+    first = datetime(2026, 11, 13, 1, 15, 22, tzinfo=UTC)
+    assert source.queries[0].endswith(f"after:{int(first.timestamp()) - 1}")
 
 
 def test_run_sync_without_config_reports_error():
@@ -150,6 +178,7 @@ def test_api_list_search_and_read(client):
 
     morning = client.get(f"/api/bulletins/{items[1]['id']}").json()
     assert "<h2>Top 3 tin đáng chú ý</h2>" in morning["html"]
+    assert morning["structure"]["sections"][0]["kind"] == "top"  # bài đã tách mục cho trang dựng thẻ tin
     assert 'href="https://www.reuters.com/x" target="_blank" rel="noopener noreferrer"' in morning["html"]
 
     unsafe = client.get(f"/api/bulletins/{items[2]['id']}").json()["html"]

@@ -5,7 +5,7 @@ import logging
 from datetime import UTC, datetime, time, timedelta
 from typing import Protocol
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from tori_core import get_settings
 
@@ -36,7 +36,7 @@ def import_messages(session: Session, source: MailSource, query: str) -> int:
     timezone = get_settings().timezone
     known = set(session.scalars(select(Bulletin.gmail_id)))
     added = 0
-    for message_id in source.search(query):
+    for message_id in source.search(query, limit=500):
         if message_id in known:
             continue
         parsed = parse_message(source.raw(message_id), timezone)
@@ -62,7 +62,9 @@ def import_messages(session: Session, source: MailSource, query: str) -> int:
 
 
 def run_sync(source: MailSource | None = None) -> SyncState:
-    """Một lần quét: chỉ xét email trong 24 giờ qua. Ghi lại kết quả để hiện trên trang."""
+    """Một lần quét: xét mọi email từ bản tin đầu tiên đã lưu (chưa có bản tin nào: 24 giờ qua),
+    nên bản tin của các lần quét bị lỡ được lấy bù; email đã lấy bị bỏ qua theo id.
+    Ghi lại kết quả để hiện trên trang."""
     settings = get_news_settings()
     with SessionLocal() as session:
         state = _state(session)
@@ -72,7 +74,9 @@ def run_sync(source: MailSource | None = None) -> SyncState:
                 if not settings.gmail_configured:
                     raise RuntimeError("Chưa cấu hình Gmail (GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN).")
                 source = GmailClient(settings.gmail_client_id, settings.gmail_client_secret, settings.gmail_refresh_token)
-            state.last_added = import_messages(session, source, f"{settings.news_gmail_query} newer_than:1d")
+            first = session.scalar(select(func.min(Bulletin.received_at)))
+            since = f"after:{int(first.replace(tzinfo=UTC).timestamp()) - 1}" if first else "newer_than:1d"
+            state.last_added = import_messages(session, source, f"{settings.news_gmail_query} {since}")
             state.last_ok, state.last_error = True, None
         except GmailAuthError as e:
             state.last_ok, state.last_error, state.last_added = False, str(e), 0
@@ -94,7 +98,7 @@ def next_run(now: datetime, times: list[time]) -> datetime:
 
 
 async def schedule_loop() -> None:
-    """Quét vào các giờ cố định mỗi ngày. Server tắt đúng giờ quét thì bỏ qua, không quét bù."""
+    """Quét vào các giờ cố định mỗi ngày. Server tắt đúng giờ quét thì lần quét sau lấy bù."""
     from zoneinfo import ZoneInfo
 
     tz = ZoneInfo(get_settings().timezone)
