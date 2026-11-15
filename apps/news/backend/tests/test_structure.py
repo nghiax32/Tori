@@ -102,6 +102,11 @@ def test_inline_html_is_escaped():
     assert 'href="javascript' not in item["body_html"]
 
 
+def test_tech_bulletin_tones():
+    st = structure("## 🛡️ Bảo mật\n\nKhông có tin nổi bật.\n\n## 💻 Lập trình & Mã nguồn mở\n\nKhông có tin nổi bật.")
+    assert [s["tone"] for s in st["sections"]] == ["security", "dev"]
+
+
 def test_no_sections_falls_back():
     assert structure("Chỉ có một đoạn chữ.") is None
     assert refang("https[://]a[.]b[.]com") == "https://a.b.com"

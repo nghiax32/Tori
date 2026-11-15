@@ -22,7 +22,7 @@ _SPACES = re.compile(r"\s+")
 
 @dataclass(frozen=True)
 class ParsedBulletin:
-    edition: str  # morning | evening | weekly
+    edition: str  # morning | evening | weekly | tech
     bulletin_date: date
     title: str
     body_md: str
@@ -72,6 +72,8 @@ def _edition(title: str, received_local: datetime) -> str:
     t = normalize(title)
     if "tong hop tuan" in t:
         return "weekly"
+    if "ban tin cong nghe" in t:
+        return "tech"
     if "buoi toi" in t:
         return "evening"
     if "buoi sang" in t:

@@ -95,6 +95,22 @@ def test_parse_weekly_and_list_order(client):
     assert [i["edition"] for i in client.get("/api/bulletins").json()] == ["weekly", "evening"]
 
 
+def test_parse_tech_keeps_evening(client):
+    tech = "⚡ Bản tin công nghệ — Thứ Hai, 16/11/2026\n\n## 🛡️ Bảo mật\n\nTin."
+    evening = "⚡ Bản tin thời sự buổi tối — Thứ Hai, 16/11/2026\n\nTin tối."
+    b = parse_message(make_email(tech, date="Mon, 16 Nov 2026 12:10:00 +0000"), TZ)
+    assert (b.edition, b.bulletin_date) == ("tech", date(2026, 11, 16))
+
+    source = FakeSource(
+        {
+            "t": make_email(tech, date="Mon, 16 Nov 2026 12:50:00 +0000"),  # đến sau bản tối
+            "e": make_email(evening, date="Mon, 16 Nov 2026 12:43:00 +0000"),
+        }
+    )
+    assert sync.run_sync(source).last_added == 2  # bản công nghệ không thay bản tối
+    assert [i["edition"] for i in client.get("/api/bulletins").json()] == ["evening", "tech"]
+
+
 def test_parse_skips_other_mail():
     assert parse_message(make_email("Báo cáo tuần\n\nKhông phải bản tin"), TZ) is None
 

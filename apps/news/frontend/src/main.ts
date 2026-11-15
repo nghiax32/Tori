@@ -3,7 +3,7 @@ import "./style.css";
 import { api, ApiError, getMeta, h, mountHeader, type AuthConfig, type Me } from "@tori/ui";
 import { renderStructured, updatedLine, type Structure } from "./reader";
 
-type Edition = "morning" | "evening" | "weekly";
+type Edition = "morning" | "evening" | "weekly" | "tech";
 
 interface BulletinSummary {
   id: number;
@@ -27,7 +27,12 @@ interface Status {
   next_run_at: string | null;
 }
 
-const EDITION: Record<Edition, string> = { morning: "☀️ Sáng", evening: "🌙 Tối", weekly: "📰 Tổng hợp tuần" };
+const EDITION: Record<Edition, string> = {
+  morning: "☀️ Sáng",
+  evening: "🌙 Tối",
+  weekly: "📰 Tổng hợp tuần",
+  tech: "💻 Công nghệ",
+};
 const WEEKDAYS = ["Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"];
 
 /** "2026-11-13" -> "Thứ sáu, 13/11/2026" */
@@ -171,14 +176,16 @@ class NewsView {
             h(
               "span",
               { class: "news-day__editions" },
-              ...(["morning", "evening"] as Edition[]).map((edition) => {
+              ...(["morning", "evening", "tech"] as Edition[]).map((edition) => {
                 const b = bulletins.find((x) => x.edition === edition);
-                if (!b) return h("span", { class: "news-edition news-edition--none" }, EDITION[edition]);
+                if (!b) {
+                  return h("span", { class: `news-edition news-edition--none news-edition--${edition}` }, EDITION[edition]);
+                }
                 return h(
                   "button",
                   {
                     type: "button",
-                    class: `news-edition${b.id === this.selectedId ? " is-active" : ""}`,
+                    class: `news-edition news-edition--${edition}${b.id === this.selectedId ? " is-active" : ""}`,
                     "aria-pressed": b.id === this.selectedId ? "true" : "false",
                     title: b.title,
                     onclick: () => select(b),

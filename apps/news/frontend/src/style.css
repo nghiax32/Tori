@@ -32,7 +32,7 @@
 /* Hai cột: danh sách ngày bên trái, bản tin bên phải */
 .news-layout {
   display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
+  grid-template-columns: 300px minmax(0, 1fr);
   gap: var(--space-5);
   align-items: start;
 }
@@ -70,8 +70,9 @@
   gap: 6px;
 }
 .news-edition {
-  flex: 1;
+  flex: 1 1 auto; /* 3 nút: chia theo độ dài chữ, "Công nghệ" rộng hơn */
   padding: 4px 8px;
+  white-space: nowrap;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
@@ -89,6 +90,19 @@
   background: var(--accent);
   color: var(--accent-contrast);
   font-weight: 700;
+}
+/* Bản tin công nghệ: nút thứ ba trong ngày, tông tím (cùng màu chuyên mục Công nghệ) */
+.news-edition--tech:not(.news-edition--none) {
+  border-color: color-mix(in srgb, var(--tone-tech) 45%, var(--border));
+  color: var(--tone-tech);
+}
+.news-edition--tech:hover {
+  border-color: var(--tone-tech);
+}
+.news-edition--tech.is-active {
+  border-color: var(--tone-tech);
+  background: var(--tone-tech);
+  color: var(--surface);
 }
 /* Buổi chưa có bản tin */
 .news-edition--none {
@@ -208,6 +222,8 @@
   --tone-tech: #7a45d1;
   --tone-asia: #c43d63;
   --tone-science: #0d8a95;
+  --tone-security: #d0461f;
+  --tone-dev: #66801a;
   --news-up: #13865a;
   --news-down: #c0392b;
 }
@@ -218,6 +234,8 @@
     --tone-tech: #b994ff;
     --tone-asia: #ff8fae;
     --tone-science: #5fd3dc;
+    --tone-security: #ff8a5c;
+    --tone-dev: #b5d35a;
     --news-up: #4fcf95;
     --news-down: #ff7b6b;
   }
@@ -227,6 +245,8 @@
 .tone-tech { --tone: var(--tone-tech); }
 .tone-asia { --tone: var(--tone-asia); }
 .tone-science { --tone: var(--tone-science); }
+.tone-security { --tone: var(--tone-security); }
+.tone-dev { --tone: var(--tone-dev); }
 .kind-top { --tone: var(--accent); }
 .kind-timeline,
 .kind-table,

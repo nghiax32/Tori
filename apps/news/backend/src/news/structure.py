@@ -34,6 +34,8 @@ _TONES = (
     ("tech", ("cong nghe",)),
     ("asia", ("chau a", "viet nam")),
     ("science", ("khoa hoc", "suc khoe", "khi hau", "khac")),
+    ("security", ("bao mat",)),
+    ("dev", ("lap trinh", "ma nguon mo")),
 )
 
 

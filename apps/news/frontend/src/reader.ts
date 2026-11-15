@@ -17,7 +17,7 @@ type Block =
   | { type: "sources_inline"; links: Source[] };
 
 type Kind = "top" | "category" | "timeline" | "table" | "sources";
-type Tone = "world" | "economy" | "tech" | "asia" | "science";
+type Tone = "world" | "economy" | "tech" | "asia" | "science" | "security" | "dev";
 
 export interface Section {
   title: string;
@@ -33,7 +33,15 @@ export interface Structure {
 }
 
 const KIND_ICON: Record<Exclude<Kind, "category">, string> = { top: "⭐", timeline: "📅", table: "📊", sources: "🔗" };
-const TONE_ICON: Record<Tone, string> = { world: "🌍", economy: "💹", tech: "🤖", asia: "🌏", science: "🔬" };
+const TONE_ICON: Record<Tone, string> = {
+  world: "🌍",
+  economy: "💹",
+  tech: "🤖",
+  asia: "🌏",
+  science: "🔬",
+  security: "🛡️",
+  dev: "💻",
+};
 
 function icon(s: Section): string {
   if (s.icon) return s.icon;

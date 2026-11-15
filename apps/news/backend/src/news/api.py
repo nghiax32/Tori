@@ -61,10 +61,15 @@ def _utc(dt: datetime | None) -> datetime | None:
 
 @router.get("/bulletins")
 def list_bulletins(_: OwnerDep, session: SessionDep, q: str = "", limit: int = 200) -> list[BulletinSummary]:
-    """Mới nhất trước; trong một ngày: tổng hợp tuần, bản tối, rồi bản sáng."""
+    """Mới nhất trước; trong một ngày: tổng hợp tuần, bản tối, bản công nghệ, rồi bản sáng."""
     stmt = select(Bulletin).order_by(
         Bulletin.bulletin_date.desc(),
-        case((Bulletin.edition == "weekly", 0), (Bulletin.edition == "evening", 1), else_=2),
+        case(
+            (Bulletin.edition == "weekly", 0),
+            (Bulletin.edition == "evening", 1),
+            (Bulletin.edition == "tech", 2),
+            else_=3,
+        ),
     )
     for word in normalize(q).split():
         stmt = stmt.where(Bulletin.search_text.contains(word, autoescape=True))
