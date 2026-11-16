@@ -176,7 +176,7 @@ class NewsView {
             h(
               "span",
               { class: "news-day__editions" },
-              ...(["morning", "evening", "tech"] as Edition[]).map((edition) => {
+              ...(["morning", "tech", "evening"] as Edition[]).map((edition) => {
                 const b = bulletins.find((x) => x.edition === edition);
                 if (!b) {
                   return h("span", { class: `news-edition news-edition--none news-edition--${edition}` }, EDITION[edition]);

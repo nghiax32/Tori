@@ -21,7 +21,7 @@ class NewsSettings(BaseSettings):
     # "after:<giờ nhận bản tin đầu tiên>" (chưa có bản tin nào: "newer_than:1d")
     news_gmail_query: str = DEFAULT_QUERY
     # Giờ quét mỗi ngày (giờ TIMEZONE), cách nhau bằng dấu phẩy
-    news_fetch_times: str = "08:00,20:00"
+    news_fetch_times: str = "08:15,09:15,20:15"
     # Email được xem bản tin, cách nhau bằng dấu phẩy. Bỏ trống: ở dev ai đăng nhập cũng xem được,
     # ở prod không ai xem được (bản tin lấy từ hộp thư riêng, không mở cho mọi người).
     news_owner_emails: str = ""

@@ -136,7 +136,7 @@ App Bản tin đọc email bản tin do Claude gửi (scheduled task) bằng Gma
    tin; gặp "Google hasn't verified this app" thì bấm **Advanced → Go to ... (unsafe) → Allow**.
    Script in ra 3 dòng `GMAIL_*`: chép vào `.env` ở máy và trên VPS (bước 5).
 
-App quét Gmail lúc 08:00 và 20:00 mỗi ngày (xét mọi email từ bản tin đầu tiên đã lưu, nên server tắt
+App quét Gmail lúc 08:15, 09:15 và 20:15 mỗi ngày (xét mọi email từ bản tin đầu tiên đã lưu, nên server tắt
 đúng giờ quét thì lần quét sau lấy bù), trên trang có nút **Quét ngay**. Trang báo "Mất quyền đọc Gmail" khi refresh
 token hỏng (đổi mật khẩu Google, thu hồi quyền...): chạy lại bước 4 rồi cập nhật
 `GMAIL_REFRESH_TOKEN`, sau đó `docker compose up -d news`.
