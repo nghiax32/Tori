@@ -4,7 +4,7 @@
 Chính phủ công bố từng năm (VD số ngày nghỉ Tết, ngày nghỉ kèm Quốc khánh) không có ở đây.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, timedelta
 
 from calendar_app.lunar import LunarDate, solar_to_lunar
@@ -15,6 +15,7 @@ class Holiday:
     name: str
     calendar: str  # "solar" | "lunar"
     off: bool = False
+    key: str = ""  # mã ngày lễ, gắn với sự kiện ngày lễ của từng người dùng (Event.holiday_key)
 
 
 # (ngày, tháng) dương lịch
@@ -51,7 +52,23 @@ LUNAR_HOLIDAYS: dict[tuple[int, int], Holiday] = {
     (23, 12): Holiday("Ông Công Ông Táo", "lunar"),
 }
 
-NEW_YEAR_EVE = Holiday("Giao thừa", "lunar")
+NEW_YEAR_EVE = Holiday("Giao thừa", "lunar", key="lunar:eve")
+
+
+def _keyed(table: dict[tuple[int, int], Holiday]) -> None:
+    for (day, month), holiday in table.items():
+        table[(day, month)] = replace(holiday, key=f"{holiday.calendar}:{month}-{day}")
+
+
+_keyed(SOLAR_HOLIDAYS)
+_keyed(LUNAR_HOLIDAYS)
+
+
+def holiday_rules() -> list[tuple[Holiday, int, int]]:
+    """Mỗi ngày lễ kèm quy tắc lặp (tháng, ngày) theo lịch của nó, để tạo sự kiện thường niên.
+    Giao thừa: ngày 30 tháng Chạp, tháng thiếu thì tự lùi về 29 (xem generator._lunar_date)."""
+    rules = [(h, month, day) for table in (SOLAR_HOLIDAYS, LUNAR_HOLIDAYS) for (day, month), h in table.items()]
+    return [*rules, (NEW_YEAR_EVE, 12, 30)]
 
 
 def holidays_on(d: date, lunar: LunarDate | None = None) -> list[Holiday]:

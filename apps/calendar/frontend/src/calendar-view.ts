@@ -3,7 +3,7 @@ import { fmtRange, monthGrid, spanText, toIso, todayIso, WEEKDAYS } from "./date
 import { loadDraft } from "./draft";
 import { openEventForm } from "./event-form";
 import { openOccurrenceDialog } from "./occurrence-dialog";
-import { KIND_LABEL, type LunarDay, type Occurrence, type TrackedItem, type TrackedList } from "./types";
+import { HOLIDAY_LABEL, KIND_LABEL, type LunarDay, type Occurrence, type TrackedItem, type TrackedList } from "./types";
 
 const WEEKDAY_NAMES = ["Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"];
 const narrow = () => window.matchMedia("(max-width: 640px)").matches;
@@ -37,12 +37,36 @@ function lunarLabel(l: LunarDay | undefined, firstCell: boolean): HTMLElement | 
   );
 }
 
-/** Tên ngày lễ ở góc phải ô ngày; ngày nghỉ lễ tô đỏ. */
-function holidayLabel(l: LunarDay | undefined): HTMLElement | null {
+/** Ngày lễ ở góc phải ô ngày, mỗi lễ một thẻ: bấm để mở sự kiện ngày lễ (bật theo dõi, nhãn, ghi chú). */
+function holidayLabel(l: LunarDay | undefined, open: (o: Occurrence) => void): HTMLElement | null {
   if (!l?.holidays.length) return null;
-  const off = l.holidays.some((x) => x.off);
-  const names = l.holidays.map((x) => x.name).join(" · ");
-  return h("span", { class: `cal-day__holiday${off ? " cal-day__holiday--off" : ""}`, title: names }, names);
+  return h(
+    "span",
+    { class: "cal-day__holiday" },
+    ...l.holidays.map((x) => {
+      const occ = x.occurrence;
+      return occ
+        ? h(
+            "button",
+            {
+              class: "cal-day__holiday-chip",
+              type: "button",
+              title: x.name,
+              onclick: (e: Event) => {
+                e.stopPropagation(); // không mở hộp thoại thêm sự kiện của ô ngày
+                open(occ);
+              },
+            },
+            x.name,
+          )
+        : h("span", { class: "cal-day__holiday-chip", title: x.name }, x.name);
+    }),
+  );
+}
+
+/** Kiểu màu của sự kiện: ngày lễ màu riêng, còn lại theo loại sự kiện */
+function tone(o: Occurrence): string {
+  return o.holiday ? "holiday" : o.kind;
 }
 
 /**
@@ -214,6 +238,7 @@ export class CalendarView {
       { class: "legend" },
       h("span", { class: "legend__item" }, h("i", { class: "legend__swatch chip--annual" }), KIND_LABEL.annual),
       h("span", { class: "legend__item" }, h("i", { class: "legend__swatch chip--occasional" }), KIND_LABEL.occasional),
+      h("span", { class: "legend__item" }, h("i", { class: "legend__swatch chip--holiday" }), HOLIDAY_LABEL),
     );
 
     this.root.replaceChildren(
@@ -292,6 +317,7 @@ export class CalendarView {
               start: `${this.filterYear}-01-01`,
               end: `${this.filterYear}-12-31`,
               q: this.query,
+              holidays: true, // kết quả lọc có cả ngày lễ (lưới lịch thì không, ngày lễ đã ở góc ô)
             })
           : Promise.resolve(null),
         this.lunarFor(days),
@@ -364,9 +390,11 @@ export class CalendarView {
           "div",
           { class: "cal-day__head" },
           h("div", { class: "cal-day__dates" }, h("span", { class: "cal-day__num" }, day.getDate()), lunarLabel(lunar.get(iso), i === 0)),
-          holidayLabel(lunar.get(iso)),
+          holidayLabel(lunar.get(iso), (o) => this.openOcc(o)),
         ),
         ...chips,
+        // Màn hẹp: góc ô bị ẩn, ngày lễ hiện thành vạch xanh (đặt sau cùng để không lệch làn của sự kiện nhiều ngày)
+        lunar.get(iso)?.holidays.length ? h("span", { class: "chip chip--holiday chip--holiday-bar", "aria-hidden": "true" }) : null,
       );
       cells.push(cell);
     });
@@ -405,9 +433,13 @@ export class CalendarView {
       h(
         "div",
         { class: "agenda__holidays", hidden: !l?.holidays.length },
-        ...(l?.holidays ?? []).map((x) =>
-          h("span", { class: `agenda__holiday${x.off ? " agenda__holiday--off" : ""}` }, x.name, x.off ? " · nghỉ lễ" : ""),
-        ),
+        ...(l?.holidays ?? []).map((x) => {
+          const occ = x.occurrence;
+          const cls = `agenda__holiday${x.off ? " agenda__holiday--off" : ""}`;
+          return occ
+            ? h("button", { class: cls, type: "button", onclick: () => this.openOcc(occ) }, x.name, x.off ? " · nghỉ lễ" : "")
+            : h("span", { class: cls }, x.name, x.off ? " · nghỉ lễ" : "");
+        }),
       ),
       items.length
         ? h(
@@ -452,7 +484,7 @@ export class CalendarView {
         {},
         h(
           "button",
-          { class: `tracked__item tracked__item--${o.kind}`, type: "button", onclick: () => this.openOcc(o) },
+          { class: `tracked__item tracked__item--${tone(o)}`, type: "button", onclick: () => this.openOcc(o) },
           h("span", { class: "tracked__title" }, o.title),
           h("span", { class: "tracked__days" }, when),
           h("span", { class: "tracked__meta muted" }, [fmtRange(o.start_date, o.end_date), span].filter(Boolean).join(" · ")),

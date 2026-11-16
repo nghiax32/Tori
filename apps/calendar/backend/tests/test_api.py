@@ -226,6 +226,6 @@ def test_labels_per_event_and_occurrence(client):
     assert [t for t, _ in search("gio ong")] == ["Giỗ ông"]
 
     # Gợi ý nhãn; nhãn không còn dùng thì bị xoá
-    assert client.get("/api/labels").json() == ["Gia đình", "Nghỉ lễ", "Tết"]
+    assert client.get("/api/labels").json() == ["Gia đình", "Nghỉ lễ", "Ngày lễ", "Tết"]  # "Ngày lễ": nhãn của các sự kiện ngày lễ
     client.patch(f"/api/occurrences/{second['id']}", json={"labels": []})
-    assert client.get("/api/labels").json() == ["Gia đình", "Tết"]
+    assert client.get("/api/labels").json() == ["Gia đình", "Ngày lễ", "Tết"]

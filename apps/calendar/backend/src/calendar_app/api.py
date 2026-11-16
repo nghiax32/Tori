@@ -8,7 +8,7 @@ from tori_core import Identity, get_identity
 
 from calendar_app import generator
 from calendar_app.db import SessionLocal, get_session
-from calendar_app.holidays import holidays_on
+from calendar_app.holidays import holiday_rules, holidays_on
 from calendar_app.lunar import LunarDate, lunar_to_solar, solar_to_lunar
 from calendar_app.models import Event, Label, Occurrence, User, event_labels, occurrence_labels
 from calendar_app.schemas import (
@@ -55,12 +55,48 @@ def record_login(identity: Identity) -> None:
         session.commit()
 
 
+HOLIDAY_LABEL = "Ngày lễ"
+
+
+def _ensure_holidays(session: Session, user: User) -> None:
+    """Tạo sự kiện thường niên cho các ngày lễ người dùng chưa có (lần đầu, hoặc khi holidays.py thêm lễ mới),
+    gắn nhãn "Ngày lễ" (nhãn cố định: luôn có trên ngày lễ, sự kiện khác không gắn được).
+    Người dùng đã tự tạo sự kiện trùng tên một ngày lễ thì bỏ qua ngày lễ đó, giữ sự kiện của họ."""
+    have = set(
+        session.scalars(select(Event.holiday_key).where(Event.user_id == user.id, Event.holiday_key.is_not(None)))
+    )
+    rules = [x for x in holiday_rules() if x[0].key not in have]
+    if not rules:
+        return
+    titles = set(session.scalars(select(Event.title_norm).where(Event.user_id == user.id)))
+    labels = _resolve_labels(session, user, [], holiday=True)
+    for holiday, month, day in rules:
+        norm = normalize_title(holiday.name)
+        if norm in titles:
+            continue
+        session.add(
+            Event(
+                user_id=user.id,
+                title=holiday.name,
+                title_norm=norm,
+                kind="annual",
+                calendar=holiday.calendar,
+                rule_month=month,
+                rule_day=day,
+                holiday_key=holiday.key,
+                labels=list(labels),
+            )
+        )
+    session.commit()
+
+
 def current_user(request: Request, session: SessionDep) -> User:
     identity = get_identity(request)
     user = session.scalar(select(User).where(User.google_sub == identity.sub))
     if user is None:  # VD DB vừa bị xoá nhưng cookie vẫn còn
         user = _upsert_user(session, identity, login=False)
         session.commit()
+    _ensure_holidays(session, user)
     return user
 
 
@@ -92,6 +128,7 @@ def _event_out(session: Session, event: Event) -> EventOut:
         rule_leap=event.rule_leap,
         rule_year=event.rule_year,
         tracked=event.tracked,
+        holiday=event.holiday_key is not None,
         archived=event.archived_at is not None,
         occurrence_count=count,
         last_date=last,
@@ -111,6 +148,7 @@ def _occ_out(occ: Occurrence) -> OccurrenceOut:
         end_date=occ.end_date,
         note=occ.note,
         tracked=e.tracked,
+        holiday=e.holiday_key is not None,
         lunar_label=_lunar_label(e),
     )
 
@@ -126,6 +164,7 @@ def _annual_out(event: Event, d: date) -> OccurrenceOut:
         end_date=d,
         note=event.note,
         tracked=event.tracked,
+        holiday=event.holiday_key is not None,
         lunar_label=_lunar_label(event),
     )
 
@@ -167,8 +206,14 @@ def _resolve_rule(rule: RuleIn) -> tuple[str, int, int, bool, int | None]:
     return "lunar", month, day, leap, year
 
 
-def _resolve_labels(session: Session, user: User, names: list[str]) -> list[Label]:
-    """Tên nhãn -> Label (tạo mới nếu chưa có). Bỏ trùng không phân biệt hoa/thường, dấu."""
+def _resolve_labels(session: Session, user: User, names: list[str], *, holiday: bool = False) -> list[Label]:
+    """Tên nhãn -> Label (tạo mới nếu chưa có). Bỏ trùng không phân biệt hoa/thường, dấu.
+    Nhãn "Ngày lễ" cố định: sự kiện ngày lễ (`holiday`) luôn có, nơi khác không được gắn."""
+    reserved = normalize_title(HOLIDAY_LABEL)
+    if holiday:
+        names = [HOLIDAY_LABEL, *names]
+    elif any(normalize_title(x) == reserved for x in names):
+        raise HTTPException(status_code=422, detail=f"Nhãn “{HOLIDAY_LABEL}” chỉ dành cho các ngày lễ")
     result: dict[str, Label] = {}
     for raw in names:
         name, norm = clean_title(raw)[:50], normalize_title(raw)[:50]
@@ -305,6 +350,13 @@ def get_event(event_id: int, user: UserDep, session: SessionDep) -> EventOut:
 def update_event(event_id: int, body: EventUpdate, user: UserDep, session: SessionDep) -> EventOut:
     event = _get_event(session, user, event_id)
     fields = body.model_fields_set
+    rule_fields = {"calendar", "rule_month", "rule_day", "rule_leap", "rule_year"}
+    if event.holiday_key is not None and (
+        ("title" in fields and body.title is not None and clean_title(body.title) != event.title)
+        or fields & rule_fields
+        or body.archived
+    ):
+        raise HTTPException(status_code=403, detail="Sự kiện ngày lễ không đổi tên, đổi ngày hay lưu trữ được")
     if "title" in fields and body.title is not None:
         title = clean_title(body.title)
         norm = normalize_title(title)
@@ -313,7 +365,7 @@ def update_event(event_id: int, body: EventUpdate, user: UserDep, session: Sessi
         _check_title_free(session, user, norm, exclude_id=event.id)
         event.title, event.title_norm = title, norm
     if "labels" in fields and body.labels is not None:
-        event.labels = _resolve_labels(session, user, body.labels)
+        event.labels = _resolve_labels(session, user, body.labels, holiday=event.holiday_key is not None)
         _prune_labels(session, user)
     if "note" in fields:
         event.note = body.note or None
@@ -322,7 +374,6 @@ def update_event(event_id: int, body: EventUpdate, user: UserDep, session: Sessi
     if "tracked" in fields and body.tracked is not None:
         event.tracked = body.tracked
 
-    rule_fields = {"calendar", "rule_month", "rule_day", "rule_leap", "rule_year"}
     if fields & rule_fields:
         if event.kind != "annual":
             raise HTTPException(status_code=422, detail="Chỉ sự kiện thường niên có quy tắc lặp")
@@ -333,7 +384,10 @@ def update_event(event_id: int, body: EventUpdate, user: UserDep, session: Sessi
 
 @router.delete("/events/{event_id}", status_code=204)
 def delete_event(event_id: int, user: UserDep, session: SessionDep) -> None:
-    session.delete(_get_event(session, user, event_id))
+    event = _get_event(session, user, event_id)
+    if event.holiday_key is not None:
+        raise HTTPException(status_code=403, detail="Không xoá được sự kiện ngày lễ")
+    session.delete(event)
     _prune_labels(session, user)
     session.commit()
 
@@ -349,10 +403,12 @@ def list_occurrences(
     end: date,
     q: str = "",
     event_id: int | None = None,
+    holidays: bool = False,
 ) -> list[OccurrenceOut]:
     """Các lần xảy ra giao với khoảng [start, end]. Dùng cho calendar và bộ lọc.
 
-    Sự kiện không thường xuyên lấy từ DB; sự kiện thường niên tính ngày từ quy tắc."""
+    Sự kiện không thường xuyên lấy từ DB; sự kiện thường niên tính ngày từ quy tắc.
+    Sự kiện ngày lễ chỉ có khi `holidays=true` (kết quả lọc): lưới lịch hiện ngày lễ ở góc ô (xem /lunar/range)."""
     filters = [Event.user_id == user.id, Event.archived_at.is_(None)]
     occ_filters, annual_filters = [], []
     if q.strip():
@@ -373,6 +429,8 @@ def list_occurrences(
     )
     result = [_occ_out(o) for o in session.scalars(stmt)]
 
+    if not holidays:
+        annual_filters.append(Event.holiday_key.is_(None))
     annual = session.scalars(
         select(Event).where(*filters, *annual_filters, Event.kind == "annual").options(selectinload(Event.labels))
     )
@@ -477,10 +535,19 @@ def tracked(user: UserDep, session: SessionDep) -> TrackedOut:
 
 
 @router.get("/lunar/range")
-def to_lunar_range(start: date, end: date, _user: UserDep) -> list[LunarDayOut]:
-    """Ngày âm, rằm và ngày lễ cho từng ngày trong [start, end] (tối đa 62 ngày), để hiện trên lưới calendar."""
+def to_lunar_range(start: date, end: date, user: UserDep, session: SessionDep) -> list[LunarDayOut]:
+    """Ngày âm, rằm và ngày lễ cho từng ngày trong [start, end] (tối đa 62 ngày), để hiện trên lưới calendar.
+    Mỗi ngày lễ kèm sự kiện ngày lễ của người dùng (nếu có) để bấm mở (bật theo dõi)."""
     if end < start or (end - start).days > 62:
         raise HTTPException(status_code=422, detail="Khoảng ngày không hợp lệ (tối đa 62 ngày)")
+    events = {
+        e.holiday_key: e
+        for e in session.scalars(
+            select(Event)
+            .where(Event.user_id == user.id, Event.holiday_key.is_not(None), Event.archived_at.is_(None))
+            .options(selectinload(Event.labels))
+        )
+    }
     result = []
     d = start
     while d <= end:
@@ -493,7 +560,15 @@ def to_lunar_range(start: date, end: date, _user: UserDep) -> list[LunarDayOut]:
                 year=ld.year,
                 leap=ld.leap,
                 full_moon=ld.day == 15,
-                holidays=[HolidayOut(name=x.name, calendar=x.calendar, off=x.off) for x in holidays_on(d, ld)],
+                holidays=[
+                    HolidayOut(
+                        name=x.name,
+                        calendar=x.calendar,
+                        off=x.off,
+                        occurrence=_annual_out(events[x.key], d) if x.key in events else None,
+                    )
+                    for x in holidays_on(d, ld)
+                ],
             )
         )
         d += timedelta(days=1)

@@ -13,6 +13,7 @@ export interface EventSummary {
   rule_leap: boolean;
   rule_year: number | null; // năm bắt đầu (năm âm nếu lịch âm); null = năm nào cũng hiện
   tracked: boolean; // hiện lần gần nhất đã qua / sắp tới ở hai bên lịch
+  holiday: boolean; // sự kiện ngày lễ: không xoá, không đổi tên/ngày
   archived: boolean;
   occurrence_count: number;
   last_date: string | null;
@@ -29,6 +30,7 @@ export interface Occurrence {
   end_date: string;
   note: string | null;
   tracked: boolean; // theo sự kiện
+  holiday: boolean; // theo sự kiện
   lunar_label: string | null;
 }
 
@@ -54,6 +56,7 @@ export interface Holiday {
   name: string;
   calendar: CalendarKind;
   off: boolean; // ngày nghỉ lễ theo Bộ luật Lao động
+  occurrence: Occurrence | null; // sự kiện ngày lễ vào ngày này: bấm thẻ lễ để mở (bật theo dõi, nhãn, ghi chú)
 }
 
 export interface LunarDay {
@@ -65,6 +68,9 @@ export interface LunarDay {
   full_moon: boolean;
   holidays: Holiday[];
 }
+
+/** Nhãn cố định của sự kiện ngày lễ: không gỡ được, sự kiện khác không gắn được (backend cũng chặn) */
+export const HOLIDAY_LABEL = "Ngày lễ";
 
 export const KIND_LABEL: Record<Kind, string> = {
   annual: "Thường niên",

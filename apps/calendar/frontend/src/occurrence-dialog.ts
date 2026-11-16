@@ -4,19 +4,21 @@ import { keepDraft, type OccDraft } from "./draft";
 import { createLabelInput } from "./label-input";
 import { KIND_LABEL, type Occurrence } from "./types";
 
-/** Xem/sửa một lần xảy ra, đổi tên hoặc xoá sự kiện. Sự kiện thường niên không có lần riêng: chỉ sửa tên/ghi chú của sự kiện. */
+/** Xem/sửa một lần xảy ra, đổi tên hoặc xoá sự kiện. Sự kiện thường niên không có lần riêng: chỉ sửa tên/ghi chú của sự kiện.
+ * Sự kiện ngày lễ: không đổi tên, không xoá (backend cũng chặn); chỉ bật theo dõi, sửa nhãn, ghi chú. */
 export function openOccurrenceDialog(occ: Occurrence, opts: { draft?: OccDraft; onChanged: () => void }): void {
   const annual = occ.id === null;
-  const titleInput = h("input", { type: "text", value: occ.title, maxlength: 200 }) as HTMLInputElement;
+  const titleInput = h("input", { type: "text", value: occ.title, maxlength: 200, disabled: occ.holiday }) as HTMLInputElement;
   const startInput = createDateInput({ value: occ.start_date });
   const endInput = createDateInput({ value: occ.end_date });
   const noteInput = h("textarea", {}, occ.note ?? "") as HTMLTextAreaElement;
-  const labelInput = createLabelInput(opts.draft?.labels ?? occ.labels);
+  const labelInput = createLabelInput(opts.draft?.labels ?? occ.labels, { holiday: occ.holiday });
   const trackedInput = h("input", { type: "checkbox", checked: occ.tracked }) as HTMLInputElement;
   const error = h("p", { class: "error-text", role: "alert" });
 
   const badges = [
     h("span", { class: `badge badge--${occ.kind}` }, KIND_LABEL[occ.kind]),
+    occ.holiday ? h("span", { class: "badge" }, "Ngày lễ") : null,
     occ.lunar_label ? h("span", { class: "badge" }, occ.lunar_label) : null,
   ];
 
@@ -80,7 +82,7 @@ export function openOccurrenceDialog(occ: Occurrence, opts: { draft?: OccDraft; 
       error,
     ],
     [
-      annual ? deleteEvent : deleteOcc,
+      occ.holiday ? null : annual ? deleteEvent : deleteOcc,
       h("span", { class: "spacer" }),
       h("button", { class: "btn", type: "button", onclick: () => close() }, "Đóng"),
       h("button", { class: "btn btn-primary", type: "submit" }, "Lưu"),

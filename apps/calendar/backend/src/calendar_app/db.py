@@ -48,6 +48,13 @@ def _add_tracked(conn: Connection) -> None:
         conn.exec_driver_sql("ALTER TABLE events ADD COLUMN tracked BOOLEAN NOT NULL DEFAULT 0")
 
 
+def _add_holiday_key(conn: Connection) -> None:
+    """Thêm cột `holiday_key` (sự kiện ngày lễ) cho DB tạo trước khi có tính năng này."""
+    if "holiday_key" not in _columns(conn, "events"):
+        conn.exec_driver_sql("ALTER TABLE events ADD COLUMN holiday_key VARCHAR(20)")
+    conn.exec_driver_sql("CREATE UNIQUE INDEX IF NOT EXISTS ix_events_holiday ON events (user_id, holiday_key)")
+
+
 def _migrate_category(conn: Connection) -> None:
     """Chuyển cột events.category (một nhãn) sang bảng labels: gắn cho sự kiện và mọi lần của nó.
     Chạy sau create_all (cần bảng labels)."""
@@ -75,6 +82,7 @@ def init_db() -> None:
         if "events" in {row[0] for row in conn.exec_driver_sql("SELECT name FROM sqlite_master WHERE type='table'")}:
             _migrate_annual_rows(conn)
             _add_tracked(conn)
+            _add_holiday_key(conn)
     Base.metadata.create_all(engine)
     with engine.begin() as conn:
         _migrate_category(conn)

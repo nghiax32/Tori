@@ -1,4 +1,5 @@
 import { api, h } from "@tori/ui";
+import { HOLIDAY_LABEL } from "./types";
 
 /** Nhãn mẫu, gợi ý kèm các nhãn đã dùng */
 const PRESETS = ["Sinh nhật", "Ngày giỗ", "Kỷ niệm", "Đi chơi", "Bảo dưỡng", "Sức khoẻ"];
@@ -24,9 +25,12 @@ export interface LabelInput {
   current(): string[];
 }
 
-/** Ô gắn nhiều nhãn: gõ rồi Enter (hoặc dấu phẩy) để thêm, bấm ✕ hoặc Backspace để gỡ. */
-export function createLabelInput(initial: string[] = []): LabelInput {
+/** Ô gắn nhiều nhãn: gõ rồi Enter (hoặc dấu phẩy) để thêm, bấm ✕ hoặc Backspace để gỡ.
+ * `holiday`: ô nhãn của sự kiện ngày lễ, nhãn "Ngày lễ" luôn có và không gỡ được.
+ * Ngoài ra nhãn "Ngày lễ" không có trong gợi ý (chỉ dành cho ngày lễ). */
+export function createLabelInput(initial: string[] = [], opts: { holiday?: boolean } = {}): LabelInput {
   const labels: string[] = [];
+  const locked = (name: string) => !!opts.holiday && norm(name) === norm(HOLIDAY_LABEL);
   const listId = `cal-labels-${++datalistSeq}`;
   const datalist = h("datalist", { id: listId });
   const input = h("input", {
@@ -44,22 +48,24 @@ export function createLabelInput(initial: string[] = []): LabelInput {
       ...labels.map((name, i) =>
         h(
           "span",
-          { class: "tag" },
+          { class: `tag${locked(name) ? " tag--locked" : ""}`, title: locked(name) ? "Nhãn cố định của ngày lễ" : null },
           name,
-          h(
-            "button",
-            {
-              type: "button",
-              class: "tag__remove",
-              "aria-label": `Gỡ nhãn ${name}`,
-              onclick: (e: Event) => {
-                e.stopPropagation();
-                labels.splice(i, 1);
-                render();
-              },
-            },
-            "✕",
-          ),
+          locked(name)
+            ? null
+            : h(
+                "button",
+                {
+                  type: "button",
+                  class: "tag__remove",
+                  "aria-label": `Gỡ nhãn ${name}`,
+                  onclick: (e: Event) => {
+                    e.stopPropagation();
+                    labels.splice(i, 1);
+                    render();
+                  },
+                },
+                "✕",
+              ),
         ),
       ),
     );
@@ -77,7 +83,7 @@ export function createLabelInput(initial: string[] = []): LabelInput {
     if ((e.key === "Enter" || e.key === ",") && input.value.trim()) {
       e.preventDefault(); // không gửi form
       add(input.value);
-    } else if (e.key === "Backspace" && !input.value && labels.length) {
+    } else if (e.key === "Backspace" && !input.value && labels.length && !locked(labels[labels.length - 1])) {
       labels.pop();
       render();
     }
@@ -89,13 +95,16 @@ export function createLabelInput(initial: string[] = []): LabelInput {
     }
   });
 
+  if (opts.holiday) add(HOLIDAY_LABEL); // đứng đầu, kể cả khi bản nháp cũ thiếu
   initial.forEach(add);
   // Gợi ý: nhãn đã dùng + nhãn mẫu
   void api
     .get<string[]>("/api/labels")
     .catch(() => [] as string[])
     .then((used) => {
-      const all = [...used, ...PRESETS.filter((p) => !used.some((u) => norm(u) === norm(p)))];
+      const all = [...used, ...PRESETS.filter((p) => !used.some((u) => norm(u) === norm(p)))].filter(
+        (x) => norm(x) !== norm(HOLIDAY_LABEL),
+      );
       datalist.replaceChildren(...all.map((name) => h("option", { value: name })));
     });
 

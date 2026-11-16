@@ -76,6 +76,7 @@ class Event(Base):
             name="ck_events_rule_by_kind",
         ),
         Index("ix_events_user", "user_id"),
+        Index("ix_events_holiday", "user_id", "holiday_key", unique=True),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -91,6 +92,8 @@ class Event(Base):
     rule_leap: Mapped[bool] = mapped_column(default=False)
     rule_year: Mapped[int | None]
     tracked: Mapped[bool] = mapped_column(default=False, server_default=false())  # hiện ở danh sách theo dõi
+    # Sự kiện ngày lễ (mã trong holidays.py): app tự tạo cho mỗi người dùng, không xoá, không đổi tên/ngày
+    holiday_key: Mapped[str | None] = mapped_column(String(20))
 
     created_at: Mapped[datetime] = mapped_column(server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(

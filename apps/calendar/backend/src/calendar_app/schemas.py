@@ -63,6 +63,7 @@ class EventOut(BaseModel):
     rule_leap: bool
     rule_year: int | None
     tracked: bool
+    holiday: bool  # sự kiện ngày lễ: không xoá, không đổi tên/ngày
     archived: bool
     occurrence_count: int
     last_date: date | None
@@ -79,6 +80,7 @@ class OccurrenceOut(BaseModel):
     end_date: date
     note: str | None
     tracked: bool  # theo sự kiện
+    holiday: bool  # theo sự kiện
     lunar_label: str | None
 
 
@@ -103,6 +105,7 @@ class HolidayOut(BaseModel):
     name: str
     calendar: CalendarKind
     off: bool  # ngày nghỉ lễ theo Bộ luật Lao động
+    occurrence: OccurrenceOut | None  # sự kiện ngày lễ của người dùng vào ngày này, để bấm mở và bật theo dõi
 
 
 class LunarDayOut(BaseModel):
