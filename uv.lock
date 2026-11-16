@@ -5,6 +5,7 @@ requires-python = ">=3.12"
 [manifest]
 members = [
     "calendar",
+    "game",
     "hub",
     "news",
     "tori",
@@ -261,6 +262,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/4e/7b/ae546e10f153fcf9a6afd8b9fe4730bdfeb8fdcb93178d54122973ef3f4c/fastapi-0.162.5.tar.gz", hash = "sha256:1ca37f64f61c99cebd38636e67525fb721c5e8c1169f07f2a35d73b0a63265d4", size = 531785, upload-time = "2026-11-11T22:29:53.177Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/10/19/5b9abfa67a29b862e509911eef40f4901f78aa48de32ad1f939b5c2b165e/fastapi-0.162.5-py3-none-any.whl", hash = "sha256:5303c67415fde762889ca337db79d27b755b8bd09cef314fa7a4340bb30bfd2b", size = 151782, upload-time = "2026-11-11T22:29:51.47Z" },
+]
+
+[[package]]
+name = "game"
+version = "0.1.0"
+source = { editable = "apps/game/backend" }
+dependencies = [
+    { name = "sqlalchemy" },
+    { name = "tori-core" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "sqlalchemy", specifier = ">=2.0.36" },
+    { name = "tori-core", editable = "packages/tori-core" },
 ]
 
 [[package]]

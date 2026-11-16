@@ -1,0 +1,9 @@
+name = "game"
+title = "Trò chơi"
+description = "Các trò chơi nhỏ: Sudoku, có bảng xếp hạng giải nhanh nhất"
+subdomain = "game"
+icon = "🎮"
+listed = true
+order = 100  # cuối danh sách trên hub
+dev_backend_port = 8003
+dev_frontend_port = 5176

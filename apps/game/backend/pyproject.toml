@@ -1,0 +1,16 @@
+[project]
+name = "game"
+version = "0.1.0"
+description = "Các trò chơi nhỏ: Sudoku, có bảng xếp hạng giải nhanh nhất"
+requires-python = ">=3.12"
+dependencies = ["tori-core", "sqlalchemy>=2.0.36"]
+
+[tool.uv.sources]
+tori-core = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/game"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

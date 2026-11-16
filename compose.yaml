@@ -42,6 +42,13 @@ services:
     volumes:
       - news_data:/data
 
+  game:
+    <<: *app
+    image: ${IMAGE_PREFIX:-tori}-game:${TAG:-latest}
+    build: { context: ., dockerfile: apps/game/Dockerfile }
+    volumes:
+      - game_data:/data
+
   # @new-app-service  (scripts/new_app.py chèn app mới phía trên dòng này)
 
 volumes:
@@ -49,4 +56,5 @@ volumes:
   caddy_config:
   calendar_data:
   news_data:
+  game_data:
   # @new-app-volume

@@ -52,12 +52,12 @@ async function boot() {
       apps.length
         ? h(
             "div",
-            { class: "hub__grid" },
+            { class: "tori-tiles" },
             ...apps.map((a) =>
               h(
                 "a",
-                { class: "card hub__card", href: a.url },
-                h("div", { class: "hub__icon", "aria-hidden": "true" }, a.icon || "◻️"),
+                { class: "card tori-tile", href: a.url },
+                h("div", { class: "tori-tile__icon", "aria-hidden": "true" }, a.icon || "◻️"),
                 h("h2", {}, a.title),
                 h("p", { class: "muted" }, a.description),
               ),

@@ -18,8 +18,9 @@ def list_apps() -> list[dict]:
     """Đọc apps/*/app.toml để liệt kê các mini app (app mới tự xuất hiện, không cần sửa hub)."""
     settings = get_settings()
     result = []
-    for path in sorted(apps_dir().glob("*/app.toml")):
-        meta = tomllib.loads(path.read_text("utf-8"))
+    metas = [tomllib.loads(path.read_text("utf-8")) for path in sorted(apps_dir().glob("*/app.toml"))]
+    # `order` trong app.toml: số lớn xếp sau (mặc định 0); bằng nhau thì theo tên thư mục
+    for meta in sorted(metas, key=lambda m: m.get("order", 0)):
         if not meta.get("listed", True):
             continue
         result.append(
