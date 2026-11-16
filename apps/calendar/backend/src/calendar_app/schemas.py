@@ -81,6 +81,7 @@ class OccurrenceOut(BaseModel):
     note: str | None
     tracked: bool  # theo sự kiện
     holiday: bool  # theo sự kiện
+    off: bool  # ngày lễ là ngày nghỉ lễ (theo Bộ luật Lao động)
     lunar_label: str | None
 
 

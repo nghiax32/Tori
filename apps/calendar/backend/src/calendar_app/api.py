@@ -8,7 +8,7 @@ from tori_core import Identity, get_identity
 
 from calendar_app import generator
 from calendar_app.db import SessionLocal, get_session
-from calendar_app.holidays import holiday_rules, holidays_on
+from calendar_app.holidays import holiday_off, holiday_rules, holidays_on
 from calendar_app.lunar import LunarDate, lunar_to_solar, solar_to_lunar
 from calendar_app.models import Event, Label, Occurrence, User, event_labels, occurrence_labels
 from calendar_app.schemas import (
@@ -149,6 +149,7 @@ def _occ_out(occ: Occurrence) -> OccurrenceOut:
         note=occ.note,
         tracked=e.tracked,
         holiday=e.holiday_key is not None,
+        off=False,  # lần riêng chỉ có ở sự kiện không thường xuyên, không phải ngày lễ
         lunar_label=_lunar_label(e),
     )
 
@@ -165,6 +166,7 @@ def _annual_out(event: Event, d: date) -> OccurrenceOut:
         note=event.note,
         tracked=event.tracked,
         holiday=event.holiday_key is not None,
+        off=holiday_off(event.holiday_key),
         lunar_label=_lunar_label(event),
     )
 

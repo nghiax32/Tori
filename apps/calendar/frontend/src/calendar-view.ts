@@ -37,7 +37,7 @@ function lunarLabel(l: LunarDay | undefined, firstCell: boolean): HTMLElement | 
   );
 }
 
-/** Ngày lễ ở góc phải ô ngày, mỗi lễ một thẻ: bấm để mở sự kiện ngày lễ (bật theo dõi, nhãn, ghi chú). */
+/** Ngày lễ ở góc phải ô ngày, mỗi lễ một thẻ (ngày nghỉ lễ màu đỏ): bấm để mở sự kiện ngày lễ (bật theo dõi, nhãn, ghi chú). */
 function holidayLabel(l: LunarDay | undefined, open: (o: Occurrence) => void): HTMLElement | null {
   if (!l?.holidays.length) return null;
   return h(
@@ -45,13 +45,15 @@ function holidayLabel(l: LunarDay | undefined, open: (o: Occurrence) => void): H
     { class: "cal-day__holiday" },
     ...l.holidays.map((x) => {
       const occ = x.occurrence;
+      const cls = `cal-day__holiday-chip${x.off ? " cal-day__holiday-chip--off" : ""}`;
+      const title = x.off ? `${x.name} · nghỉ lễ` : x.name;
       return occ
         ? h(
             "button",
             {
-              class: "cal-day__holiday-chip",
+              class: cls,
               type: "button",
-              title: x.name,
+              title,
               onclick: (e: Event) => {
                 e.stopPropagation(); // không mở hộp thoại thêm sự kiện của ô ngày
                 open(occ);
@@ -59,7 +61,7 @@ function holidayLabel(l: LunarDay | undefined, open: (o: Occurrence) => void): H
             },
             x.name,
           )
-        : h("span", { class: "cal-day__holiday-chip", title: x.name }, x.name);
+        : h("span", { class: cls, title }, x.name);
     }),
   );
 }
@@ -394,7 +396,12 @@ export class CalendarView {
         ),
         ...chips,
         // Màn hẹp: góc ô bị ẩn, ngày lễ hiện thành vạch xanh (đặt sau cùng để không lệch làn của sự kiện nhiều ngày)
-        lunar.get(iso)?.holidays.length ? h("span", { class: "chip chip--holiday chip--holiday-bar", "aria-hidden": "true" }) : null,
+        lunar.get(iso)?.holidays.length
+          ? h("span", {
+              class: `chip chip--holiday chip--holiday-bar${lunar.get(iso)?.holidays.some((x) => x.off) ? " chip--holiday-off" : ""}`,
+              "aria-hidden": "true",
+            })
+          : null,
       );
       cells.push(cell);
     });

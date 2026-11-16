@@ -64,6 +64,11 @@ _keyed(SOLAR_HOLIDAYS)
 _keyed(LUNAR_HOLIDAYS)
 
 
+def holiday_off(key: str | None) -> bool:
+    """Ngày lễ có mã `key` là ngày nghỉ lễ (theo Bộ luật Lao động)?"""
+    return any(h.key == key and h.off for h, _, _ in holiday_rules())
+
+
 def holiday_rules() -> list[tuple[Holiday, int, int]]:
     """Mỗi ngày lễ kèm quy tắc lặp (tháng, ngày) theo lịch của nó, để tạo sự kiện thường niên.
     Giao thừa: ngày 30 tháng Chạp, tháng thiếu thì tự lùi về 29 (xem generator._lunar_date)."""

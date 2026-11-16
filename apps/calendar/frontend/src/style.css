@@ -283,6 +283,10 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+.cal-day__holiday-chip--off {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
 button.cal-day__holiday-chip {
   cursor: pointer;
 }
@@ -364,9 +368,12 @@ button.cal-day__holiday-chip:hover {
   background: var(--holiday-bg);
   color: var(--holiday-fg);
 }
-/* Vạch ngày lễ: chỉ hiện ở màn hẹp (màn rộng có thẻ ở góc ô) */
+/* Vạch ngày lễ: chỉ hiện ở màn hẹp (màn rộng có thẻ ở góc ô); ngày nghỉ lễ màu đỏ */
 .chip--holiday-bar {
   display: none;
+}
+.chip--holiday-off {
+  color: var(--danger);
 }
 .chip--start {
   width: calc(100% - 4px);

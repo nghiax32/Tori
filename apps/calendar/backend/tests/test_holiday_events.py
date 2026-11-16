@@ -72,6 +72,10 @@ def test_holiday_shown_in_corner_not_as_chip(client):
     assert holiday["name"] == "Quốc khánh"
     assert holiday["occurrence"]["event_id"] == _holiday(client, "Quốc khánh")["id"]
     assert holiday["occurrence"]["start_date"] == "2026-09-02"
+    assert holiday["occurrence"]["off"] is True  # Quốc khánh: ngày nghỉ lễ
+
+    days = client.get("/api/lunar/range", params={"start": "2026-11-20", "end": "2026-11-20"}).json()
+    assert days[0]["holidays"][0]["occurrence"]["off"] is False  # Nhà giáo: không phải ngày nghỉ
 
 
 def test_new_year_eve_is_last_day_of_lunar_year(client):

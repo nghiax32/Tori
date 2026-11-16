@@ -31,6 +31,7 @@ export interface Occurrence {
   note: string | null;
   tracked: boolean; // theo sự kiện
   holiday: boolean; // theo sự kiện
+  off: boolean; // ngày lễ là ngày nghỉ lễ
   lunar_label: string | null;
 }
 

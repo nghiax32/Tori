@@ -2,7 +2,7 @@ import { api, createDateInput, createDialog, h } from "@tori/ui";
 import { fmt } from "./dates";
 import { keepDraft, type OccDraft } from "./draft";
 import { createLabelInput } from "./label-input";
-import { KIND_LABEL, type Occurrence } from "./types";
+import { HOLIDAY_LABEL, KIND_LABEL, type Occurrence } from "./types";
 
 /** Xem/sửa một lần xảy ra, đổi tên hoặc xoá sự kiện. Sự kiện thường niên không có lần riêng: chỉ sửa tên/ghi chú của sự kiện.
  * Sự kiện ngày lễ: không đổi tên, không xoá (backend cũng chặn); chỉ bật theo dõi, sửa nhãn, ghi chú. */
@@ -18,7 +18,12 @@ export function openOccurrenceDialog(occ: Occurrence, opts: { draft?: OccDraft; 
 
   const badges = [
     h("span", { class: `badge badge--${occ.kind}` }, KIND_LABEL[occ.kind]),
-    occ.holiday ? h("span", { class: "badge" }, "Ngày lễ") : null,
+    // Ngày nghỉ lễ: nhãn đỏ như danh sách theo ngày trên điện thoại, VD "Tết Dương lịch · nghỉ lễ"
+    occ.holiday
+      ? occ.off
+        ? h("span", { class: "agenda__holiday agenda__holiday--off" }, `${occ.title} · nghỉ lễ`)
+        : h("span", { class: "badge" }, HOLIDAY_LABEL)
+      : null,
     occ.lunar_label ? h("span", { class: "badge" }, occ.lunar_label) : null,
   ];
 
