@@ -66,10 +66,33 @@ function holidayLabel(l: LunarDay | undefined, open: (o: Occurrence) => void): H
   );
 }
 
+type Tone = "annual" | "occasional" | "holiday" | "holiday-off";
+
 /** Kiểu màu của sự kiện: ngày lễ màu riêng (ngày nghỉ lễ màu đỏ), còn lại theo loại sự kiện */
-function tone(o: Occurrence): string {
+function tone(o: Occurrence): Tone {
   if (o.holiday) return o.off ? "holiday-off" : "holiday";
   return o.kind;
+}
+
+/** Các loại trong bộ lọc "Theo dõi"; `swatch`: class màu, giống chú thích dưới lịch */
+const TONES: { tone: Tone; label: string; swatch: string }[] = [
+  { tone: "annual", label: KIND_LABEL.annual, swatch: "chip--annual" },
+  { tone: "occasional", label: KIND_LABEL.occasional, swatch: "chip--occasional" },
+  { tone: "holiday", label: HOLIDAY_LABEL, swatch: "chip--holiday" },
+  { tone: "holiday-off", label: "Nghỉ lễ", swatch: "chip--holiday chip--holiday-off" },
+];
+const TRACKED_FILTER_KEY = "calendar.trackedFilter";
+const TRACKED_FILTER_DEFAULT: Tone[] = ["occasional"];
+
+/** Bộ lọc "Theo dõi" đã chọn, nhớ trong trình duyệt (không đọc được thì dùng mặc định) */
+function loadTrackedFilter(): Set<Tone> {
+  try {
+    const saved = JSON.parse(localStorage.getItem(TRACKED_FILTER_KEY) ?? "null") as unknown;
+    if (Array.isArray(saved)) return new Set(TONES.map((t) => t.tone).filter((t) => saved.includes(t)));
+  } catch {
+    // localStorage bị chặn hoặc dữ liệu hỏng
+  }
+  return new Set(TRACKED_FILTER_DEFAULT);
 }
 
 /**
@@ -126,6 +149,9 @@ export class CalendarView {
   private readonly pastPanel = h("aside", { class: "tracked tracked--past card", "aria-label": "Đã qua" });
   private readonly upcomingPanel = h("aside", { class: "tracked tracked--upcoming card", "aria-label": "Sắp tới" });
   private readonly error = h("p", { class: "error-text", hidden: true });
+  // Bộ lọc chung cho hai cột theo dõi (nút "Theo dõi" trên thanh công cụ)
+  private readonly trackedFilter = loadTrackedFilter();
+  private tracked: TrackedList | null = null;
 
   constructor(private readonly root: HTMLElement) {
     const now = new Date();
@@ -232,6 +258,7 @@ export class CalendarView {
         "div",
         { class: "toolbar__actions" },
         searchBox,
+        this.trackedFilterMenu(),
         h("button", { class: "btn btn-primary", type: "button", onclick: () => this.openAdd() }, "+ Thêm"),
       ),
     );
@@ -477,7 +504,52 @@ export class CalendarView {
     );
   }
 
+  /** Nút "Theo dõi ▾": chọn các loại sự kiện hiện ở hai cột Đã qua / Sắp tới */
+  private trackedFilterMenu(): HTMLElement {
+    const count = h("span", { class: "tracked-filter__count" });
+    const syncCount = () => (count.textContent = `${this.trackedFilter.size}/${TONES.length}`);
+    const menu = h(
+      "div",
+      { class: "tracked-filter__menu card" },
+      ...TONES.map(({ tone: t, label, swatch }) => {
+        const box = h("input", {
+          type: "checkbox",
+          checked: this.trackedFilter.has(t),
+          onchange: () => {
+            if (box.checked) this.trackedFilter.add(t);
+            else this.trackedFilter.delete(t);
+            try {
+              localStorage.setItem(TRACKED_FILTER_KEY, JSON.stringify([...this.trackedFilter]));
+            } catch {
+              // không lưu được thì chỉ áp dụng cho lần xem này
+            }
+            syncCount();
+            if (this.tracked) this.renderTracked(this.tracked);
+          },
+        }) as HTMLInputElement;
+        return h("label", { class: "tracked-filter__option" }, box, h("i", { class: `legend__swatch ${swatch}` }), label);
+      }),
+    );
+    const details = h(
+      "details",
+      { class: "tracked-filter" },
+      h("summary", { class: "btn", title: "Chọn loại sự kiện hiện ở cột Đã qua / Sắp tới" }, "Theo dõi ", count),
+      menu,
+    ) as HTMLDetailsElement;
+    syncCount();
+    // Bấm ra ngoài hoặc Esc thì đóng
+    document.addEventListener("pointerdown", (e) => {
+      if (details.open && !details.contains(e.target as Node)) details.open = false;
+    });
+    details.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") details.open = false;
+    });
+    return details;
+  }
+
   private renderTracked(data: TrackedList): void {
+    this.tracked = data;
+    const shown = (x: TrackedItem) => this.trackedFilter.has(tone(x.occurrence));
     const item = (x: TrackedItem, future: boolean) => {
       const o = x.occurrence;
       let when: string;
@@ -500,13 +572,15 @@ export class CalendarView {
         ),
       );
     };
-    const fill = (panel: HTMLElement, title: string, items: TrackedItem[], future: boolean, empty: string) =>
+    const fill = (panel: HTMLElement, title: string, all: TrackedItem[], future: boolean, empty: string) => {
+      const items = all.filter(shown);
       panel.replaceChildren(
         h("h2", { class: "tracked__head" }, title),
         items.length
           ? h("ul", { class: "tracked__list" }, ...items.map((x) => item(x, future)))
-          : h("p", { class: "muted tracked__empty" }, empty),
+          : h("p", { class: "muted tracked__empty" }, all.length ? "Không có sự kiện thuộc loại đang chọn ở nút “Theo dõi”." : empty),
       );
+    };
     fill(this.pastPanel, "Đã qua", data.past, false, "Chưa có sự kiện theo dõi nào đã qua.");
     fill(this.upcomingPanel, "Sắp tới", data.upcoming, true, "Chưa có. Tích “Theo dõi” khi thêm hoặc sửa sự kiện.");
   }
