@@ -1,17 +1,35 @@
+/* Màu 4 loại sự kiện, dùng chung cho thẻ trên lịch, thẻ theo dõi, chú thích, nhãn:
+   nền nhạt (-bg), vạch/viền (-line), chữ (-fg) */
 :root {
-  --annual-bg: #fdebdc;
-  --annual-fg: #8a3b0c;
-  --occ-bg: #dcf1e2;
-  --occ-fg: #1d5e30;
-  --holiday-bg: var(--accent-soft); /* ngày lễ: xanh dương */
-  --holiday-fg: var(--accent);
+  --annual-bg: #ecf0fd; /* thường niên: xanh dương */
+  --annual-line: #5470e0;
+  --annual-fg: #3149b8;
+  --occ-bg: #eaf6ee; /* không thường xuyên: xanh lá */
+  --occ-line: #3f9a62;
+  --occ-fg: #22744a;
+  --holiday-bg: #fdf8dc; /* ngày lễ: vàng */
+  --holiday-line: #d4a910;
+  --holiday-fg: #866600;
+  --off-bg: #fdedf0; /* ngày nghỉ lễ: hồng đỏ */
+  --off-line: #df5470;
+  --off-fg: #b8304d;
+  --lunar-fg: #8a3b0c; /* ngày âm mùng 1 / rằm */
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --annual-bg: #4a2a14;
-    --annual-fg: #ffc59a;
-    --occ-bg: #1d3a26;
-    --occ-fg: #9fe0b2;
+    --annual-bg: #1d2544;
+    --annual-line: #7d93ff;
+    --annual-fg: #a9b8ff;
+    --occ-bg: #182b20;
+    --occ-line: #5cbf84;
+    --occ-fg: #8fdcaf;
+    --holiday-bg: #2f2a14;
+    --holiday-line: #e3c249;
+    --holiday-fg: #f2d675;
+    --off-bg: #3a1d25;
+    --off-line: #f0708a;
+    --off-fg: #ff9fb2;
+    --lunar-fg: #ffc59a;
   }
 }
 
@@ -65,28 +83,41 @@
   padding: 0;
   list-style: none;
 }
+/* Thẻ theo dõi: nền nhạt + vạch trái + số ngày cùng một tông theo loại sự kiện */
 .tracked__item {
+  --t-bg: var(--occ-bg);
+  --t-line: var(--occ-line);
+  --t-ink: var(--occ-fg);
   display: grid;
   gap: 2px;
   width: 100%;
   padding: 8px 10px;
   border: 0;
-  border-left: 4px solid var(--occ-fg);
+  border-left: 4px solid var(--t-line);
   border-radius: var(--radius-sm);
-  background: var(--surface-2);
+  background: var(--t-bg);
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
 .tracked__item--annual {
-  border-left-color: var(--annual-fg);
+  --t-bg: var(--annual-bg);
+  --t-line: var(--annual-line);
+  --t-ink: var(--annual-fg);
 }
 .tracked__item--holiday {
-  border-left-color: var(--holiday-fg);
+  --t-bg: var(--holiday-bg);
+  --t-line: var(--holiday-line);
+  --t-ink: var(--holiday-fg);
+}
+.tracked__item--holiday-off {
+  --t-bg: var(--off-bg);
+  --t-line: var(--off-line);
+  --t-ink: var(--off-fg);
 }
 .tracked__item:hover {
-  background: var(--accent-soft);
+  filter: brightness(0.97);
 }
 .tracked__title {
   font-weight: 600;
@@ -95,7 +126,7 @@
 .tracked__days {
   font-size: 15px;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--t-ink);
 }
 .tracked__meta {
   font-size: var(--text-xs);
@@ -256,7 +287,7 @@
   align-items: flex-start;
   flex: none;
 }
-/* Ngày lễ ở góc phải ô: mỗi lễ một thẻ xanh dương, bấm để mở */
+/* Ngày lễ ở góc phải ô: mỗi lễ một thẻ (màu ngày lễ; ngày nghỉ lễ màu nghỉ lễ), bấm để mở */
 .cal-day__holiday {
   display: flex;
   flex-direction: column;
@@ -284,8 +315,8 @@
   overflow: hidden;
 }
 .cal-day__holiday-chip--off {
-  background: var(--danger-soft);
-  color: var(--danger);
+  background: var(--off-bg);
+  color: var(--off-fg);
 }
 button.cal-day__holiday-chip {
   cursor: pointer;
@@ -301,7 +332,7 @@ button.cal-day__holiday-chip:hover {
 }
 /* Ngày nghỉ lễ: số ngày màu đỏ */
 .cal-day--off .cal-day__num {
-  color: var(--danger);
+  color: var(--off-fg);
 }
 /* Ngày âm nhỏ bên dưới ngày dương */
 .cal-day__lunar {
@@ -314,7 +345,7 @@ button.cal-day__holiday-chip:hover {
 .cal-day__lunar--first,
 .cal-day__lunar--full {
   font-weight: 700;
-  color: var(--annual-fg);
+  color: var(--lunar-fg);
 }
 .cal-day__num {
   display: inline-grid;
@@ -373,7 +404,8 @@ button.cal-day__holiday-chip:hover {
   display: none;
 }
 .chip--holiday-off {
-  color: var(--danger);
+  background: var(--off-bg);
+  color: var(--off-fg);
 }
 .chip--start {
   width: calc(100% - 4px);
@@ -454,10 +486,12 @@ button.cal-day__holiday-chip:hover {
   cursor: pointer;
 }
 .agenda__item--annual {
-  border-left-color: var(--annual-fg);
+  border-left-color: var(--annual-line);
+  background: var(--annual-bg);
 }
 .agenda__item--occasional {
-  border-left-color: var(--occ-fg);
+  border-left-color: var(--occ-line);
+  background: var(--occ-bg);
 }
 .agenda__title {
   font-weight: 600;
@@ -482,14 +516,14 @@ button.cal-day__holiday-chip:hover {
   border: 0;
   border-radius: 999px;
   font-family: inherit;
-  background: var(--accent-soft);
-  color: var(--accent);
+  background: var(--holiday-bg);
+  color: var(--holiday-fg);
   font-size: var(--text-sm);
   font-weight: 600;
 }
 .agenda__holiday--off {
-  background: var(--danger-soft);
-  color: var(--danger);
+  background: var(--off-bg);
+  color: var(--off-fg);
 }
 button.agenda__holiday {
   cursor: pointer;
@@ -814,7 +848,7 @@ button.agenda__holiday {
     margin: 0 2px 2px;
   }
   .cal-day__holiday {
-    display: none; /* màn hẹp: ngày lễ là vạch xanh trong ô, tên xem ở danh sách bên dưới */
+    display: none; /* màn hẹp: ngày lễ là vạch màu trong ô, tên xem ở danh sách bên dưới */
   }
   .chip--holiday-bar {
     display: block;
@@ -849,11 +883,18 @@ button.agenda__holiday {
     line-height: 0;
     pointer-events: none;
   }
-  .chip--annual,
-  .chip--occasional,
+  /* Màn hẹp: thẻ thành vạch, tô bằng màu vạch của từng loại */
+  .chip--annual {
+    background: var(--annual-line);
+  }
+  .chip--occasional {
+    background: var(--occ-line);
+  }
   .chip--holiday {
-    background: currentColor;
-    opacity: 0.75;
+    background: var(--holiday-line);
+  }
+  .chip--holiday-off {
+    background: var(--off-line);
   }
   .cal-day--selected {
     box-shadow: inset 0 0 0 2px var(--accent);

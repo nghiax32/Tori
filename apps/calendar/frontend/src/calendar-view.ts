@@ -66,9 +66,10 @@ function holidayLabel(l: LunarDay | undefined, open: (o: Occurrence) => void): H
   );
 }
 
-/** Kiểu màu của sự kiện: ngày lễ màu riêng, còn lại theo loại sự kiện */
+/** Kiểu màu của sự kiện: ngày lễ màu riêng (ngày nghỉ lễ màu đỏ), còn lại theo loại sự kiện */
 function tone(o: Occurrence): string {
-  return o.holiday ? "holiday" : o.kind;
+  if (o.holiday) return o.off ? "holiday-off" : "holiday";
+  return o.kind;
 }
 
 /**
@@ -241,6 +242,7 @@ export class CalendarView {
       h("span", { class: "legend__item" }, h("i", { class: "legend__swatch chip--annual" }), KIND_LABEL.annual),
       h("span", { class: "legend__item" }, h("i", { class: "legend__swatch chip--occasional" }), KIND_LABEL.occasional),
       h("span", { class: "legend__item" }, h("i", { class: "legend__swatch chip--holiday" }), HOLIDAY_LABEL),
+      h("span", { class: "legend__item" }, h("i", { class: "legend__swatch chip--holiday chip--holiday-off" }), "Nghỉ lễ"),
     );
 
     this.root.replaceChildren(
@@ -395,7 +397,7 @@ export class CalendarView {
           holidayLabel(lunar.get(iso), (o) => this.openOcc(o)),
         ),
         ...chips,
-        // Màn hẹp: góc ô bị ẩn, ngày lễ hiện thành vạch xanh (đặt sau cùng để không lệch làn của sự kiện nhiều ngày)
+        // Màn hẹp: góc ô bị ẩn, ngày lễ hiện thành vạch màu (đặt sau cùng để không lệch làn của sự kiện nhiều ngày)
         lunar.get(iso)?.holidays.length
           ? h("span", {
               class: `chip chip--holiday chip--holiday-bar${lunar.get(iso)?.holidays.some((x) => x.off) ? " chip--holiday-off" : ""}`,
