@@ -12,7 +12,7 @@ async def lifespan(_app):
     yield
 
 
-app = create_app("calendar", title="Calendar", lifespan=lifespan)
+app = create_app("calendar", title="Lịch", lifespan=lifespan)
 app.include_router(build_auth_router(on_login=api.record_login))
 app.include_router(api.router)
 mount_frontend(app)

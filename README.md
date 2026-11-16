@@ -3,7 +3,7 @@
 Website cá nhân gồm nhiều mini app dưới một domain:
 
 - `tori.com`: **hub**, trang chủ liệt kê các app
-- `calendar.tori.com`: **Calendar**, ghi sự kiện và mốc thời gian (sinh nhật, ngày giỗ âm lịch, đi du lịch...)
+- `calendar.tori.com`: **Lịch**, ghi sự kiện và mốc thời gian (sinh nhật, ngày giỗ âm lịch, đi du lịch...)
 - `news.tori.com`: **Bản tin**, bản tin quốc tế sáng và tối do Claude tổng hợp, lấy tự động từ Gmail
 - `<app>.tori.com`: các app thêm sau
 
@@ -73,7 +73,7 @@ docker compose up -d --build
 ```
 
 - Hub: <http://localhost>
-- Calendar: <http://calendar.localhost>
+- Lịch: <http://calendar.localhost>
 - Bản tin: <http://news.localhost> (cần cấu hình Gmail, xem [docs/deploy.md](docs/deploy.md) mục 4b)
 
 Chrome và Firefox tự hiểu `*.localhost` là máy mình. Nếu cổng 80 đã bị chiếm, đặt

@@ -1,5 +1,5 @@
 name = "calendar"
-title = "Calendar"
+title = "Lịch"
 description = "Ghi lại sự kiện và mốc thời gian: sinh nhật, ngày giỗ (âm lịch), những chuyến đi du lịch..."
 subdomain = "calendar"
 icon = "📅"

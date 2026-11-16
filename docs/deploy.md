@@ -229,7 +229,7 @@ curl https://calendar.tori.com/api/health     # {"status":"ok","app":"calendar"}
 curl https://news.tori.com/api/health         # {"status":"ok","app":"news"}
 ```
 
-Mở <https://tori.com> trên trình duyệt, bấm vào Calendar, đăng nhập Google.
+Mở <https://tori.com> trên trình duyệt, bấm vào Lịch, đăng nhập Google.
 
 Lần đầu Caddy cần khoảng vài chục giây để xin chứng chỉ. Trong lúc đó trình duyệt có thể báo
 lỗi HTTPS.

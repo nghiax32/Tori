@@ -32,7 +32,7 @@ export function renderLogin(root: HTMLElement, cfg: AuthConfig): void {
         "div",
         { class: "card login-card" },
         h("div", { class: "login-icon", "aria-hidden": "true" }, "📅"),
-        h("h1", {}, "Calendar"),
+        h("h1", {}, "Lịch"),
         h(
           "p",
           { class: "muted" },
