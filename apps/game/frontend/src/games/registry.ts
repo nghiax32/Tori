@@ -20,4 +20,11 @@ export const GAMES: GameInfo[] = [
     description: "Điền số 1–9 sao cho mỗi hàng, cột và khối 3×3 không trùng số. Ba mức khó, bảng xếp hạng giải nhanh nhất.",
     load: () => import("./sudoku"),
   },
+  {
+    id: "o-an-quan",
+    name: "Ô ăn quan",
+    icon: "🪨",
+    description: "Trò chơi dân gian: rải dân, ăn quan, đấu với máy ở ba mức Dễ, Vừa, Khó. Một quan bằng 10 dân, nhiều điểm hơn thì thắng.",
+    load: () => import("./o-an-quan"),
+  },
 ];

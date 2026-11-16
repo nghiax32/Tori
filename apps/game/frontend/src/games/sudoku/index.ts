@@ -1,14 +1,7 @@
 import { api, ApiError, createDialog, h } from "@tori/ui";
+import { gameTop, levelName, levelPicker, loadLevel as loadSavedLevel, saveLevel as storeLevel, type Level } from "../shared";
 
-type Level = "easy" | "medium" | "hard";
-const LEVELS: [Level, string][] = [
-  ["easy", "Dễ"],
-  ["medium", "Vừa"],
-  ["hard", "Khó"],
-];
 const LEVEL_KEY = "game.sudoku.level";
-const BACK_ICON =
-  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>';
 
 interface Game {
   id: number;
@@ -60,37 +53,8 @@ export function formatTime(s: number): string {
   return hh ? `${hh}:${String(mm).padStart(2, "0")}:${ss}` : `${mm}:${ss}`;
 }
 
-function loadLevel(): Level {
-  try {
-    const v = localStorage.getItem(LEVEL_KEY);
-    if (v === "easy" || v === "medium" || v === "hard") return v;
-  } catch {
-    /* trình duyệt chặn localStorage */
-  }
-  return "easy";
-}
-
-function saveLevel(level: Level): void {
-  try {
-    localStorage.setItem(LEVEL_KEY, level);
-  } catch {
-    /* bỏ qua */
-  }
-}
-
-function segmented(name: string, onPick: (level: Level) => void) {
-  const inputs = new Map<Level, HTMLInputElement>();
-  const el = h(
-    "div",
-    { class: "segmented", role: "radiogroup" },
-    LEVELS.map(([value, label]) => {
-      const input = h("input", { type: "radio", name, value, onchange: () => onPick(value) }) as HTMLInputElement;
-      inputs.set(value, input);
-      return h("label", {}, input, h("span", {}, label));
-    }),
-  );
-  return { el, set: (level: Level) => (inputs.get(level)!.checked = true) };
-}
+const loadLevel = () => loadSavedLevel(LEVEL_KEY);
+const saveLevel = (level: Level) => storeLevel(LEVEL_KEY, level);
 
 export function mount(root: HTMLElement): () => void {
   let game: Game | null = null;
@@ -125,7 +89,7 @@ export function mount(root: HTMLElement): () => void {
     { type: "button", class: "btn sudoku__tool", title: "Xoá ô (Backspace)", onclick: () => erase() },
     "⌫ Xoá",
   );
-  const levelPick = segmented("sudoku-level", (level) => void newGame(level));
+  const levelPick = levelPicker("sudoku-level", (level) => void newGame(level));
   const newBtn = h(
     "button",
     { type: "button", class: "btn btn-primary", onclick: () => void newGame(game?.level ?? loadLevel()) },
@@ -134,7 +98,7 @@ export function mount(root: HTMLElement): () => void {
 
   const boardTitle = h("h2", { class: "sudoku__board-title" }, "Bảng xếp hạng");
   const boardList = h("div", { class: "sudoku__ranks" });
-  const boardPick = segmented("sudoku-board", (level) => void loadBoard(level));
+  const boardPick = levelPicker("sudoku-board", (level) => void loadBoard(level));
   const leaderEl = h(
     "aside",
     { class: "card sudoku__leader" },
@@ -144,24 +108,11 @@ export function mount(root: HTMLElement): () => void {
     boardList,
   );
 
-  const backBtn = h("a", {
-    class: "btn btn-icon sudoku__back",
-    href: "#/",
-    "aria-label": "Về danh sách trò chơi",
-    title: "Về danh sách trò chơi",
-  });
-  backBtn.innerHTML = BACK_ICON; // chuỗi SVG tĩnh
-
   root.replaceChildren(
     h(
       "section",
       { class: "sudoku" },
-      h(
-        "div",
-        { class: "sudoku__top" },
-        backBtn,
-        h("h1", { class: "sudoku__title" }, "Sudoku"),
-      ),
+      gameTop("Sudoku"),
       h(
         "div",
         { class: "sudoku__body" },
@@ -354,7 +305,6 @@ export function mount(root: HTMLElement): () => void {
   };
 
   const showDone = (res: FinishOut, level: Level) => {
-    const levelName = LEVELS.find(([v]) => v === level)![1];
     const { form, close } = createDialog(
       "Hoàn thành! 🎉",
       [
@@ -363,8 +313,8 @@ export function mount(root: HTMLElement): () => void {
           "p",
           { class: "muted" },
           res.record
-            ? `Kỷ lục mới của bạn ở mức ${levelName}. Hạng ${res.rank} trên bảng xếp hạng.`
-            : `Kỷ lục của bạn ở mức ${levelName}: ${formatTime(res.best)} (hạng ${res.rank}).`,
+            ? `Kỷ lục mới của bạn ở mức ${levelName(level)}. Hạng ${res.rank} trên bảng xếp hạng.`
+            : `Kỷ lục của bạn ở mức ${levelName(level)}: ${formatTime(res.best)} (hạng ${res.rank}).`,
         ),
       ],
       [

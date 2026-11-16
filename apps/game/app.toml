@@ -1,6 +1,6 @@
 name = "game"
 title = "Trò chơi"
-description = "Các trò chơi nhỏ: Sudoku, có bảng xếp hạng giải nhanh nhất"
+description = "Các trò chơi nhỏ: Sudoku có bảng xếp hạng giải nhanh nhất, Ô ăn quan đấu với máy"
 subdomain = "game"
 icon = "🎮"
 listed = true

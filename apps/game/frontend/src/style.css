@@ -40,29 +40,31 @@
   letter-spacing: -0.01em;
 }
 
-/* ---------- Sudoku ---------- */
-.sudoku {
-  /* Cạnh một ô: to nhất 72px, vừa chiều rộng màn hình và vừa chiều cao còn lại dưới header + thanh điều khiển */
-  --cell: max(30px, min(72px, calc((100vw - 36px) / 9), calc((100dvh - 240px) / 9)));
-  padding: var(--space-4) 0 var(--space-6);
-}
+/* ---------- dùng chung cho các game ---------- */
 /* Nút quay lại bên trái, tên game giữa trang */
-.sudoku__top {
+.game-top {
   display: grid;
   grid-template-columns: 40px 1fr 40px;
   align-items: center;
   gap: var(--space-3);
   margin-bottom: var(--space-4);
 }
-.sudoku__back svg {
+.game-top__back svg {
   width: 22px;
   height: 22px;
 }
-.sudoku__title {
+.game-top__title {
   margin: 0;
   font-size: 28px;
   font-weight: 700;
   text-align: center;
+}
+
+/* ---------- Sudoku ---------- */
+.sudoku {
+  /* Cạnh một ô: to nhất 72px, vừa chiều rộng màn hình và vừa chiều cao còn lại dưới header + thanh điều khiển */
+  --cell: max(30px, min(72px, calc((100vw - 36px) / 9), calc((100dvh - 240px) / 9)));
+  padding: var(--space-4) 0 var(--space-6);
 }
 .sudoku__controls {
   display: flex;
@@ -312,10 +314,224 @@
   .sudoku {
     --cell: calc((100vw - 36px) / 9);
   }
-  .sudoku__title {
+  .game-top__title {
     font-size: var(--text-xl);
   }
   .sudoku__controls {
     gap: var(--space-2);
   }
+}
+
+/* ---------- Ô ăn quan ---------- */
+.oaq {
+  /* Cạnh một ô dân: to nhất 104px, bàn 7 cột vừa chiều rộng màn hình */
+  --c: max(40px, min(104px, calc((100vw - 36px) / 7)));
+  --r: max(var(--c), 76px); /* chiều cao mỗi hàng: trên điện thoại ô hẹp thì cho cao hơn để dễ bấm */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) 0 var(--space-6);
+}
+.oaq > .game-top {
+  align-self: stretch;
+  margin-bottom: 0;
+}
+.oaq__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2) var(--space-3);
+}
+.oaq__label {
+  font-size: var(--text-sm);
+}
+
+.oaq__score {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: calc(var(--c) * 7 + 4px);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.oaq__score.is-turn {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.oaq__score-name {
+  font-weight: 700;
+}
+.oaq__score-name small {
+  color: var(--muted);
+  font-weight: 500;
+}
+.oaq__score-detail {
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.oaq__score-points {
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+}
+
+.oaq__board {
+  display: grid;
+  grid-template-columns: repeat(7, var(--c));
+  grid-template-rows: repeat(2, var(--r));
+  border: 2px solid var(--text);
+  border-radius: calc(var(--c) * 0.9);
+  overflow: hidden;
+  background: var(--surface-2);
+  user-select: none;
+}
+.oaq__cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  background: var(--surface-2);
+  transition: background-color 0.15s;
+}
+.oaq__cell.is-mine {
+  background: var(--surface);
+}
+.oaq__quan {
+  background: var(--surface);
+}
+.oaq__quan--left {
+  border-width: 0 2px 0 0;
+  border-color: var(--text);
+}
+.oaq__quan--right {
+  border-width: 0 0 0 2px;
+  border-color: var(--text);
+}
+.oaq__cell.is-pickable {
+  cursor: pointer;
+}
+.oaq__cell.is-pickable:hover,
+.oaq__cell.is-pickable:focus-visible {
+  background: var(--accent-soft);
+  outline: none;
+}
+.oaq__cell.is-selected {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 3px var(--accent);
+}
+.oaq__cell.is-pick,
+.oaq__cell.is-refill {
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface));
+  box-shadow: inset 0 0 0 3px var(--accent);
+}
+.oaq__cell.is-drop,
+.oaq__cell.is-collect {
+  background: var(--accent-soft);
+}
+.oaq__cell.is-capture {
+  background: var(--danger-soft);
+  box-shadow: inset 0 0 0 3px var(--danger);
+}
+
+.oaq__stones {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: center;
+  justify-content: center;
+  gap: calc(var(--c) * 0.04);
+  width: 78%;
+  max-height: 78%;
+}
+.oaq__quan .oaq__stones {
+  width: 70%;
+}
+.oaq__dan {
+  width: calc(var(--c) * 0.1);
+  height: calc(var(--c) * 0.1);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text) 60%, transparent);
+}
+.oaq__quan-stone {
+  flex-basis: 100%;
+  height: calc(var(--c) * 0.34);
+  margin-bottom: calc(var(--c) * 0.06);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--accent) 55%, white), var(--accent));
+  box-shadow: 0 2px 4px rgb(0 0 0 / 0.25);
+}
+.oaq__count {
+  position: absolute;
+  top: 3px;
+  right: 6px;
+  color: var(--muted);
+  font-size: max(11px, calc(var(--c) * 0.14));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.oaq__quan--left .oaq__count {
+  right: auto;
+  left: 50%;
+  top: 8px;
+}
+.oaq__quan--right .oaq__count {
+  right: 50%;
+  top: 8px;
+}
+
+.oaq__dirs {
+  position: absolute;
+  inset: auto 0 4px;
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+.oaq__dir {
+  width: max(22px, calc(var(--c) * 0.36));
+  height: max(22px, calc(var(--c) * 0.3));
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font: inherit;
+  font-size: max(13px, calc(var(--c) * 0.18));
+  font-weight: 700;
+  cursor: pointer;
+}
+.oaq__dir:hover {
+  background: var(--accent-hover);
+}
+
+.oaq__status {
+  min-height: 1.5em;
+  margin: 0;
+  font-weight: 600;
+  text-align: center;
+}
+.oaq__result {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 40px;
+  font-weight: 700;
+  text-align: center;
+}
+.oaq__rules {
+  width: calc(var(--c) * 7 + 4px);
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--text-sm);
+}
+.oaq__rules summary {
+  font-weight: 700;
+  cursor: pointer;
+}
+.oaq__rules ul {
+  margin: var(--space-2) 0 0;
+  padding-left: 1.2em;
+}
+.oaq__rules li + li {
+  margin-top: var(--space-1);
 }
