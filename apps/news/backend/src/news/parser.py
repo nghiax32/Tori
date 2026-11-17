@@ -2,7 +2,7 @@
 
 Email chỉ có phần HTML. Nội dung bản tin là markdown thô, chia thành các đoạn
 <p style="...white-space:pre-line">; dòng đầu là tiêu đề, ví dụ
-"⚡ Bản tin quốc tế buổi sáng — Thứ Sáu, 13/11/2026".
+"Bản tin thời sự — Thứ Sáu, 13/11/2026".
 """
 
 import email
@@ -22,7 +22,7 @@ _SPACES = re.compile(r"\s+")
 
 @dataclass(frozen=True)
 class ParsedBulletin:
-    edition: str  # morning | evening | weekly | tech
+    edition: str  # morning (thời sự) | weekly | tech
     bulletin_date: date
     title: str
     body_md: str
@@ -68,17 +68,16 @@ def extract_markdown(html: str) -> str:
     return "\n\n".join(p for p in parser.paragraphs if p)
 
 
-def _edition(title: str, received_local: datetime) -> str:
+def _edition(title: str) -> str | None:
+    """Loại bản tin theo tiêu đề; None với bản tối (đã bỏ, không lưu nữa)."""
     t = normalize(title)
     if "tong hop tuan" in t:
         return "weekly"
     if "ban tin cong nghe" in t:
         return "tech"
     if "buoi toi" in t:
-        return "evening"
-    if "buoi sang" in t:
-        return "morning"
-    return "morning" if received_local.hour < 14 else "evening"
+        return None
+    return "morning"
 
 
 def _bulletin_date(title: str, received_local: datetime) -> date:
@@ -108,10 +107,11 @@ def parse_message(raw: bytes, timezone: str) -> ParsedBulletin | None:
 
     first, _, rest = markdown.partition("\n")
     title = unescape(first).strip()
-    if "ban tin" not in normalize(title):
+    edition = _edition(title)
+    if "ban tin" not in normalize(title) or edition is None:
         return None
     return ParsedBulletin(
-        edition=_edition(title, received_local),
+        edition=edition,
         bulletin_date=_bulletin_date(title, received_local),
         title=title,
         body_md=rest.strip(),

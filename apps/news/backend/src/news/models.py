@@ -9,15 +9,15 @@ class Base(DeclarativeBase):
 
 
 class Bulletin(Base):
-    """Một bản tin (sáng hoặc tối của một ngày), lấy từ một email trong Gmail."""
+    """Một bản tin (thời sự, công nghệ hoặc tổng hợp tuần), lấy từ một email trong Gmail."""
 
     __tablename__ = "bulletins"
-    # Một ngày chỉ một bản sáng, một bản tối: nếu task chạy lại thì bản mới thay bản cũ
+    # Mỗi ngày mỗi loại chỉ một bản: nếu task chạy lại thì bản mới thay bản cũ
     __table_args__ = (UniqueConstraint("bulletin_date", "edition"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     gmail_id: Mapped[str] = mapped_column(String(64), unique=True)
-    edition: Mapped[str] = mapped_column(String(10))  # morning | evening | weekly | tech
+    edition: Mapped[str] = mapped_column(String(10))  # morning (thời sự) | weekly | tech; evening: bản tối cũ, đã bỏ
     bulletin_date: Mapped[date] = mapped_column(Date, index=True)
     title: Mapped[str] = mapped_column(String(300))
     body_md: Mapped[str] = mapped_column(Text)

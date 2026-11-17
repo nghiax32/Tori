@@ -124,7 +124,7 @@ Script trên máy bạn                       Trình duyệt                  Go
 Sau bước này Google ghi nhận: "client `tori-gmail-desktop` được đọc Gmail của tài khoản X".
 Refresh token là bằng chứng của việc đó.
 
-### 3.2. Mỗi lần quét (server, 08:15, 09:15 và 20:15 hoặc nút "Quét ngay")
+### 3.2. Mỗi lần quét (server, 06:50, 08:15 và 18:30 hoặc nút "Quét ngay")
 
 ```
 App news                                                  Google

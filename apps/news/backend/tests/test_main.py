@@ -8,6 +8,7 @@ import pytest
 from news import sync
 from news.db import SessionLocal
 from news.gmail import GmailAuthError, GmailClient
+from news.models import Bulletin
 from news.parser import parse_message
 
 TZ = "Asia/Ho_Chi_Minh"
@@ -41,6 +42,7 @@ MORNING = (
     "**Sources:**\n- [Reuters – Dầu](https://www.reuters.com/x)"
 )
 EVENING = "⚡ Bản tin quốc tế buổi tối — Thứ Sáu, 13/11/2026\n\n## Thế giới\n\n**Đàm phán Ukraine.** Tin tối."
+TECH = "⚡ Bản tin công nghệ — Thứ Sáu, 13/11/2026\n\n## 🛡️ Bảo mật\n\nTin công nghệ."
 
 
 class FakeSource:
@@ -72,11 +74,13 @@ def test_parse_morning():
     assert "Open session" not in b.body_md and "preheader" not in b.body_md
 
 
-def test_parse_evening_and_fallbacks():
-    assert parse_message(make_email(EVENING), TZ).edition == "evening"
-    # Tiêu đề không ghi buổi/ngày: lấy theo giờ nhận (20:05 giờ VN = tối, ngày 14/11)
+def test_parse_current_title_skips_evening_and_fallbacks():
+    b = parse_message(make_email("Bản tin thời sự — Thứ Ba, 17/11/2026\n\nTin."), TZ)
+    assert (b.edition, b.bulletin_date) == ("morning", date(2026, 11, 17))
+    assert parse_message(make_email(EVENING), TZ) is None  # bản tối đã bỏ: không lưu
+    # Tiêu đề không ghi ngày: lấy ngày theo giờ nhận (20:05 giờ VN ngày 14/11)
     b = parse_message(make_email("Bản tin quốc tế\n\nNội dung", date="Sat, 14 Nov 2026 13:05:00 +0000"), TZ)
-    assert (b.edition, b.bulletin_date) == ("evening", date(2026, 11, 14))
+    assert (b.edition, b.bulletin_date) == ("morning", date(2026, 11, 14))
 
 
 def test_parse_weekly_and_list_order(client):
@@ -84,31 +88,31 @@ def test_parse_weekly_and_list_order(client):
     b = parse_message(make_email(weekly, date="Sun, 15 Nov 2026 13:09:57 +0000"), TZ)
     assert (b.edition, b.bulletin_date) == ("weekly", date(2026, 11, 15))  # ngày cuối tuần
 
-    evening = "⚡ Bản tin quốc tế buổi tối — Chủ Nhật, 15/11/2026\n\nTin tối."
+    news = "Bản tin thời sự — Chủ Nhật, 15/11/2026\n\nTin."
     source = FakeSource(
         {
-            "w": make_email(weekly, date="Sun, 15 Nov 2026 13:09:57 +0000"),
-            "e": make_email(evening, date="Sun, 15 Nov 2026 12:43:24 +0000"),
+            "w": make_email(weekly, date="Sun, 15 Nov 2026 11:01:57 +0000"),
+            "m": make_email(news, date="Sat, 14 Nov 2026 23:05:24 +0000"),
         }
     )
-    assert sync.run_sync(source).last_added == 2  # bản tuần không thay bản tối Chủ nhật
-    assert [i["edition"] for i in client.get("/api/bulletins").json()] == ["weekly", "evening"]
+    assert sync.run_sync(source).last_added == 2  # bản tuần không thay bản thời sự Chủ nhật
+    assert [i["edition"] for i in client.get("/api/bulletins").json()] == ["weekly", "morning"]
 
 
-def test_parse_tech_keeps_evening(client):
+def test_parse_tech_keeps_news(client):
     tech = "⚡ Bản tin công nghệ — Thứ Hai, 16/11/2026\n\n## 🛡️ Bảo mật\n\nTin."
-    evening = "⚡ Bản tin thời sự buổi tối — Thứ Hai, 16/11/2026\n\nTin tối."
-    b = parse_message(make_email(tech, date="Mon, 16 Nov 2026 12:10:00 +0000"), TZ)
+    news = "Bản tin thời sự — Thứ Hai, 16/11/2026\n\nTin."
+    b = parse_message(make_email(tech, date="Sun, 15 Nov 2026 23:31:00 +0000"), TZ)
     assert (b.edition, b.bulletin_date) == ("tech", date(2026, 11, 16))
 
     source = FakeSource(
         {
-            "t": make_email(tech, date="Mon, 16 Nov 2026 12:50:00 +0000"),  # đến sau bản tối
-            "e": make_email(evening, date="Mon, 16 Nov 2026 12:43:00 +0000"),
+            "t": make_email(tech, date="Sun, 15 Nov 2026 23:36:00 +0000"),  # đến sau bản thời sự
+            "m": make_email(news, date="Sun, 15 Nov 2026 23:05:00 +0000"),
         }
     )
-    assert sync.run_sync(source).last_added == 2  # bản công nghệ không thay bản tối
-    assert [i["edition"] for i in client.get("/api/bulletins").json()] == ["evening", "tech"]
+    assert sync.run_sync(source).last_added == 2  # bản công nghệ không thay bản thời sự
+    assert [i["edition"] for i in client.get("/api/bulletins").json()] == ["tech", "morning"]
 
 
 def test_parse_skips_other_mail():
@@ -119,9 +123,9 @@ def test_parse_skips_other_mail():
 
 
 def test_import_dedupes_and_replaces_same_edition():
-    source = FakeSource({"m1": make_email(MORNING), "e1": make_email(EVENING)})
+    source = FakeSource({"m1": make_email(MORNING), "t1": make_email(TECH), "e1": make_email(EVENING)})
     with SessionLocal() as s:
-        assert sync.import_messages(s, source, "q") == 2
+        assert sync.import_messages(s, source, "q") == 2  # bản tối bị bỏ qua
         assert sync.import_messages(s, source, "q") == 0  # email đã lấy thì bỏ qua
         # Task chạy lại cùng buổi sáng: bản mới hơn thay bản cũ, bản cũ hơn thì bỏ
         newer = MORNING.replace("Dầu tăng mạnh", "Dầu tăng rất mạnh")
@@ -143,12 +147,12 @@ def test_run_sync_records_status_and_adds_newer_than():
 
 def test_run_sync_catches_up_missed_bulletins():
     # Lỡ các lần quét (server tắt): lần sau tìm từ bản tin đầu tiên đã lưu, lấy lại cả bản tin
-    # cũ hơn bản mới nhất (VD: đã có sáng 13 và sáng 15, thiếu tối 13)
+    # cũ hơn bản mới nhất (VD: đã có thời sự 13 và 15, thiếu công nghệ 13)
     sync.run_sync(FakeSource({"m1": make_email(MORNING)}))  # nhận 01:15:22 UTC 13/11
     later = make_email("⚡ Bản tin quốc tế buổi sáng — 15/11/2026\n\nTin.", date="Sun, 15 Nov 2026 00:42:28 +0000")
     sync.run_sync(FakeSource({"m3": later}))
-    source = FakeSource({"m3": later, "e1": make_email(EVENING), "m1": make_email(MORNING)})
-    assert sync.run_sync(source).last_added == 1  # chỉ tối 13; m1, m3 đã có
+    source = FakeSource({"m3": later, "t1": make_email(TECH), "m1": make_email(MORNING)})
+    assert sync.run_sync(source).last_added == 1  # chỉ công nghệ 13; m1, m3 đã có
     first = datetime(2026, 11, 13, 1, 15, 22, tzinfo=UTC)
     assert source.queries[0].endswith(f"after:{int(first.timestamp()) - 1}")
 
@@ -180,12 +184,25 @@ def test_next_run():
 
 def test_api_list_search_and_read(client):
     script = "⚡ Bản tin quốc tế buổi sáng — 12/11/2026\n\n<script>alert(1)</script> [x](javascript:alert(1))"
-    sync.run_sync(FakeSource({"m1": make_email(MORNING), "e1": make_email(EVENING), "x": make_email(script)}))
+    sync.run_sync(FakeSource({"m1": make_email(MORNING), "t1": make_email(TECH), "x": make_email(script)}))
+    with SessionLocal() as s:  # bản tối cũ còn trong DB: không liệt kê
+        s.add(
+            Bulletin(
+                gmail_id="e0",
+                edition="evening",
+                bulletin_date=date(2026, 11, 13),
+                title="Bản tin quốc tế buổi tối",
+                body_md="Tin tối.",
+                search_text="dau tang",
+                received_at=datetime(2026, 11, 13, 13, tzinfo=UTC),
+            )
+        )
+        s.commit()
 
     items = client.get("/api/bulletins").json()
-    # Mới nhất trước, trong ngày bản tối trước bản sáng
+    # Mới nhất trước, trong ngày bản công nghệ trước bản thời sự
     assert [(i["bulletin_date"], i["edition"]) for i in items] == [
-        ("2026-11-13", "evening"),
+        ("2026-11-13", "tech"),
         ("2026-11-13", "morning"),
         ("2026-11-12", "morning"),
     ]

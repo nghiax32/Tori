@@ -3,7 +3,7 @@ import "./style.css";
 import { api, ApiError, getMeta, h, mountHeader, type AuthConfig, type Me } from "@tori/ui";
 import { renderStructured, updatedLine, type Structure } from "./reader";
 
-type Edition = "morning" | "evening" | "weekly" | "tech";
+type Edition = "morning" | "weekly" | "tech";
 
 interface BulletinSummary {
   id: number;
@@ -28,8 +28,7 @@ interface Status {
 }
 
 const EDITION: Record<Edition, string> = {
-  morning: "☀️ Sáng",
-  evening: "🌙 Tối",
+  morning: "🗞️ Thời sự",
   weekly: "📰 Tổng hợp tuần",
   tech: "💻 Công nghệ",
 };
@@ -152,7 +151,7 @@ class NewsView {
       );
       return;
     }
-    // Gom theo ngày: mỗi ngày một dòng, nút Sáng / Tối. Tổng hợp tuần là một dòng riêng,
+    // Gom theo ngày: mỗi ngày một dòng, nút Thời sự / Công nghệ. Tổng hợp tuần là một dòng riêng,
     // đứng trên ngày cuối tuần (bulletin_date là ngày cuối tuần)
     const rows = new Map<string, BulletinSummary[]>();
     for (const b of this.items) {
@@ -176,7 +175,7 @@ class NewsView {
             h(
               "span",
               { class: "news-day__editions" },
-              ...(["morning", "tech", "evening"] as Edition[]).map((edition) => {
+              ...(["morning", "tech"] as Edition[]).map((edition) => {
                 const b = bulletins.find((x) => x.edition === edition);
                 if (!b) {
                   return h("span", { class: `news-edition news-edition--none news-edition--${edition}` }, EDITION[edition]);
