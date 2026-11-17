@@ -60,6 +60,47 @@
   text-align: center;
 }
 
+/* Bảng xếp hạng (renderRanks trong games/shared.ts) */
+.rank-list ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rank-list__row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-2);
+  border-radius: var(--radius-sm);
+}
+.rank-list__row:nth-child(-n + 3) .rank-list__no {
+  color: var(--accent);
+}
+.rank-list__row.is-me {
+  background: var(--accent-soft);
+}
+.rank-list__no {
+  font-weight: 700;
+  text-align: center;
+}
+.rank-list__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rank-list__name small {
+  color: var(--muted);
+}
+.rank-list__time {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.rank-list__gap {
+  padding: 0 var(--space-2);
+  color: var(--muted);
+}
+
 /* ---------- Sudoku ---------- */
 .sudoku {
   /* Cạnh một ô: to nhất 72px, vừa chiều rộng màn hình và vừa chiều cao còn lại dưới header + thanh điều khiển */
@@ -242,45 +283,6 @@
 .sudoku__leader-hint {
   margin: 0;
   font-size: var(--text-sm);
-}
-.sudoku__ranks ol {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.sudoku__rank {
-  display: grid;
-  grid-template-columns: 28px 1fr auto;
-  gap: var(--space-2);
-  align-items: center;
-  padding: var(--space-2);
-  border-radius: var(--radius-sm);
-}
-.sudoku__rank:nth-child(-n + 3) .sudoku__rank-no {
-  color: var(--accent);
-}
-.sudoku__rank.is-me {
-  background: var(--accent-soft);
-}
-.sudoku__rank-no {
-  font-weight: 700;
-  text-align: center;
-}
-.sudoku__rank-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.sudoku__rank-name small {
-  color: var(--muted);
-}
-.sudoku__rank-time {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-.sudoku__rank-gap {
-  padding: 0 var(--space-2);
-  color: var(--muted);
 }
 .sudoku__done-time {
   margin: 0;

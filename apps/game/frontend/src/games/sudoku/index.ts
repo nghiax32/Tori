@@ -1,5 +1,13 @@
 import { api, ApiError, createDialog, h } from "@tori/ui";
-import { gameTop, levelName, levelPicker, loadLevel as loadSavedLevel, saveLevel as storeLevel, type Level } from "../shared";
+import {
+  gameTop,
+  levelName,
+  levelPicker,
+  loadLevel as loadSavedLevel,
+  renderRanks,
+  saveLevel as storeLevel,
+  type Level,
+} from "../shared";
 
 const LEVEL_KEY = "game.sudoku.level";
 
@@ -97,7 +105,7 @@ export function mount(root: HTMLElement): () => void {
   );
 
   const boardTitle = h("h2", { class: "sudoku__board-title" }, "Bảng xếp hạng");
-  const boardList = h("div", { class: "sudoku__ranks" });
+  const boardList = h("div", { class: "rank-list" });
   const boardPick = levelPicker("sudoku-board", (level) => void loadBoard(level));
   const leaderEl = h(
     "aside",
@@ -372,24 +380,7 @@ export function mount(root: HTMLElement): () => void {
     boardPick.set(level);
     const data = await api.get<Leaderboard>("/api/sudoku/leaderboard", { level }).catch(() => null);
     if (run !== boardSeq) return;
-    if (!data) {
-      boardList.replaceChildren(h("p", { class: "error-text" }, "Không tải được bảng xếp hạng."));
-      return;
-    }
-    const row = (x: LeaderRow) =>
-      h(
-        "li",
-        { class: `sudoku__rank${x.me ? " is-me" : ""}` },
-        h("span", { class: "sudoku__rank-no" }, String(x.rank)),
-        h("span", { class: "sudoku__rank-name" }, x.name, x.me ? h("small", {}, " (bạn)") : null),
-        h("span", { class: "sudoku__rank-time" }, formatTime(x.seconds)),
-      );
-    const inTop = data.top.some((x) => x.me);
-    boardList.replaceChildren(
-      data.top.length
-        ? h("ol", {}, data.top.map(row), !inTop && data.mine ? [h("li", { class: "sudoku__rank-gap" }, "…"), row(data.mine)] : null)
-        : h("p", { class: "muted" }, "Chưa ai giải mức này. Bạn là người đầu tiên!"),
-    );
+    renderRanks(boardList, data, (x) => formatTime(x.seconds), "Chưa ai giải mức này. Bạn là người đầu tiên!");
   };
 
   // ---------- đồng hồ, phím tắt ----------
