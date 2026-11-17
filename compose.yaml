@@ -49,6 +49,13 @@ services:
     volumes:
       - game_data:/data
 
+  learningenglish:
+    <<: *app
+    image: ${IMAGE_PREFIX:-tori}-learningenglish:${TAG:-latest}
+    build: { context: ., dockerfile: apps/learningenglish/Dockerfile }
+    volumes:
+      - learningenglish_data:/data
+
   # @new-app-service  (scripts/new_app.py chèn app mới phía trên dòng này)
 
 volumes:
@@ -57,4 +64,5 @@ volumes:
   calendar_data:
   news_data:
   game_data:
+  learningenglish_data:
   # @new-app-volume

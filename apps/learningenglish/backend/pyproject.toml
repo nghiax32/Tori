@@ -1,0 +1,16 @@
+[project]
+name = "learningenglish"
+version = "0.1.0"
+description = "Học từ tiếng Anh đời sống hằng ngày và hay gặp trong tin tức, theo chủ đề: ghép cặp, nghe – chép, điền vào câu, từ của ngày; tự lên lịch ôn lại từ hay quên"
+requires-python = ">=3.12"
+dependencies = ["tori-core", "sqlalchemy>=2.0.36"]
+
+[tool.uv.sources]
+tori-core = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/learningenglish"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

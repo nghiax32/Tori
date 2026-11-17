@@ -1,0 +1,9 @@
+name = "learningenglish"
+title = "Học Tiếng Anh"
+description = "Học từ tiếng Anh đời sống hằng ngày và hay gặp trong tin tức, theo chủ đề: ghép cặp, nghe – chép, điền vào câu, từ của ngày; tự lên lịch ôn lại từ hay quên"
+subdomain = "learningenglish"
+icon = "🔤"
+listed = true
+order = 50  # sau Bản tin, trước Trò chơi (order = 100)
+dev_backend_port = 8004
+dev_frontend_port = 5177

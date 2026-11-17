@@ -22,3 +22,8 @@
 	encode zstd gzip
 	reverse_proxy game:8000
 }
+
+{$TORI_SCHEME}://learningenglish.{$TORI_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy learningenglish:8000
+}
