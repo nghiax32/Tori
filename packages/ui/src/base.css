@@ -365,7 +365,7 @@ a {
   box-shadow: var(--shadow);
 }
 
-/* ---------- lưới thẻ (hub, sảnh trò chơi): icon + tên căn giữa, mô tả căn đều, nổi lên khi rê chuột ---------- */
+/* ---------- lưới thẻ (hub): icon + tên căn giữa, mô tả căn đều, nổi lên khi rê chuột ---------- */
 .tori-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
