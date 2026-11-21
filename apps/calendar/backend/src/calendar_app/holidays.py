@@ -1,6 +1,6 @@
 """Ngày lễ cố định của Việt Nam (dương lịch và âm lịch), không phụ thuộc người dùng.
 
-`off=True`: ngày nghỉ lễ theo Bộ luật Lao động 2019 (Điều 112). Các ngày nghỉ thêm/nghỉ bù do
+`off=True`: ngày nghỉ lễ theo Bộ luật Lao động 2019 (Điều 112), thêm Ngày Văn hóa Việt Nam 24/11 (từ 2026). Các ngày nghỉ thêm/nghỉ bù do
 Chính phủ công bố từng năm (VD số ngày nghỉ Tết, ngày nghỉ kèm Quốc khánh) không có ở đây.
 """
 
@@ -33,6 +33,7 @@ SOLAR_HOLIDAYS: dict[tuple[int, int], Holiday] = {
     (2, 9): Holiday("Quốc khánh", "solar", off=True),
     (20, 10): Holiday("Phụ nữ Việt Nam", "solar"),
     (20, 11): Holiday("Nhà giáo Việt Nam", "solar"),
+    (24, 11): Holiday("Ngày Văn hóa Việt Nam", "solar", off=True),
     (22, 12): Holiday("Quân đội Nhân dân Việt Nam", "solar"),
     (25, 12): Holiday("Giáng sinh", "solar"),
 }
