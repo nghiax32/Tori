@@ -1,0 +1,9 @@
+name = "todo"
+title = "Việc cần làm"
+description = "Danh sách việc cần làm: thêm việc, đặt hạn chót, đánh dấu xong"
+subdomain = "todo"
+icon = "✅"
+listed = true
+order = 10  # ngay sau Lịch
+dev_backend_port = 8005
+dev_frontend_port = 5178

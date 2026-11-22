@@ -1,0 +1,142 @@
+/* ---------- đăng nhập ---------- */
+.login-wrap {
+  display: grid;
+  place-items: center;
+  min-height: 70vh;
+}
+.login-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(400px, 100%);
+  padding: var(--space-6) var(--space-5);
+  text-align: center;
+}
+.login-card h1,
+.login-card p {
+  margin: 0;
+}
+.login-icon {
+  font-size: 40px;
+}
+.login-dev {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px dashed var(--border);
+  text-align: left;
+}
+
+/* ---------- danh sách việc ---------- */
+.todo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--space-6) 0;
+}
+.todo h1 {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+.todo .error-text:empty {
+  display: none;
+}
+.todo-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  padding: var(--space-3);
+}
+.todo-add > .input {
+  flex: 1 1 260px;
+  min-width: 0;
+}
+.todo-add .date-input {
+  flex: 0 1 170px;
+}
+.todo-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+.todo-item {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-2) var(--space-3);
+  border-top: 1px solid var(--border);
+}
+.todo-item:first-child {
+  border-top: 0;
+}
+.todo-check {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.todo-title {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-1) 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.todo-title:hover {
+  color: var(--accent);
+}
+.is-done .todo-title {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.due {
+  flex: none;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+.due--today {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.due--late {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.todo-delete {
+  flex: none;
+  color: var(--muted);
+}
+.todo-delete:hover {
+  color: var(--danger);
+}
+.todo-empty {
+  padding: var(--space-5) var(--space-3);
+  text-align: center;
+}
+.todo-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+.todo-footer:empty {
+  display: none;
+}

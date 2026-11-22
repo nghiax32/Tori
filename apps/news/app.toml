@@ -4,5 +4,6 @@ description = "Bản tin quốc tế sáng và tối do Claude tổng hợp, l�
 subdomain = "news"
 icon = "📰"
 listed = true
+order = 20  # sau Việc cần làm
 dev_backend_port = 8002
 dev_frontend_port = 5175

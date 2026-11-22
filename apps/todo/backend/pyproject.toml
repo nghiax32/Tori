@@ -1,0 +1,16 @@
+[project]
+name = "todo"
+version = "0.1.0"
+description = "Danh sách việc cần làm: thêm việc, đặt hạn chót, đánh dấu xong"
+requires-python = ">=3.12"
+dependencies = ["tori-core", "sqlalchemy>=2.0.36"]
+
+[tool.uv.sources]
+tori-core = { workspace = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/todo"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
