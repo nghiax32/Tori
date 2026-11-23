@@ -1,6 +1,7 @@
 import { api, createDateInput, createDialog, h, isoToVn } from "@tori/ui";
+import { createGarden, type Garden } from "./dandelion";
 
-interface Note {
+export interface Note {
   id: number;
   content: string;
   due: string | null;
@@ -10,6 +11,25 @@ interface Note {
 }
 
 type Filter = "open" | "done" | "all";
+type View = "list" | "garden";
+
+const VIEW_KEY = "note:view";
+
+function loadView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === "garden" ? "garden" : "list";
+  } catch {
+    return "list";
+  }
+}
+
+function saveView(view: View) {
+  try {
+    localStorage.setItem(VIEW_KEY, view);
+  } catch {
+    // trình duyệt chặn lưu trữ: lần sau mở lại chế độ danh sách
+  }
+}
 
 const pad = (n: number) => String(n).padStart(2, "0");
 const isoOf = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -54,6 +74,8 @@ function autoGrow(area: HTMLTextAreaElement, onSubmit: () => void): HTMLTextArea
 export function mount(root: HTMLElement): void {
   let notes: Note[] = [];
   let filter: Filter = "open";
+  let view: View = loadView();
+  let garden: Garden | null = null;
 
   const errorText = h("p", { class: "error-text", role: "alert" });
   const showError = (err: unknown) => {
@@ -73,22 +95,31 @@ export function mount(root: HTMLElement): void {
   dueInput.input.setAttribute("aria-label", "Hạn chót (không bắt buộc)");
   dueInput.input.placeholder = "Hạn chót (tuỳ chọn)";
 
+  let saving = false;
   async function addNote() {
     const content = contentInput.value.trim();
     const due = dueInput.value();
     if (!content) return contentInput.focus();
     if (due === null) return dueInput.input.focus();
+    if (saving) return;
+    saving = true;
+    const sent = contentInput.value;
     try {
-      await api.post<Note>("/api/notes", { content: contentInput.value, due: due || null });
-      contentInput.value = "";
-      contentInput.dispatchEvent(new Event("input"));
-      dueInput.setValue("");
+      await api.post<Note>("/api/notes", { content: sent, due: due || null });
+      // lúc chờ lưu mà đã gõ tiếp thì giữ nguyên chữ mới gõ
+      if (contentInput.value === sent) {
+        contentInput.value = "";
+        contentInput.dispatchEvent(new Event("input"));
+        dueInput.setValue("");
+      }
       errorText.textContent = "";
       if (filter === "done") filter = "open";
       await reload();
       contentInput.focus();
     } catch (err) {
       showError(err);
+    } finally {
+      saving = false;
     }
   }
 
@@ -111,6 +142,9 @@ export function mount(root: HTMLElement): void {
   );
 
   const filterBox = h("div", { class: "segmented", role: "radiogroup", "aria-label": "Lọc" });
+  const viewBox = h("div", { class: "segmented", role: "radiogroup", "aria-label": "Chế độ hiển thị" });
+  const toolbar = h("div", { class: "note-toolbar" }, filterBox, viewBox);
+  const gardenHost = h("div", { class: "garden", hidden: true });
   const list = h("ul", { class: "note-list" });
   const footer = h("div", { class: "note-footer" });
 
@@ -154,6 +188,18 @@ export function mount(root: HTMLElement): void {
         err,
       ],
       [
+        h(
+          "button",
+          {
+            class: "btn note-dialog-done",
+            type: "button",
+            onclick: async () => {
+              close();
+              await update(note, { done: !note.done });
+            },
+          },
+          note.done ? "Bỏ đánh dấu xong" : "✓ Đánh dấu xong",
+        ),
         h("button", { class: "btn btn-ghost", type: "button", onclick: () => close() }, "Huỷ"),
         h("button", { class: "btn btn-primary", type: "submit" }, "Lưu"),
       ],
@@ -242,6 +288,58 @@ export function mount(root: HTMLElement): void {
       ),
     );
 
+    const views: [View, string][] = [
+      ["list", "📋 Danh sách"],
+      ["garden", "🌬️ Bồ công anh"],
+    ];
+    viewBox.replaceChildren(
+      ...views.map(([value, label]) =>
+        h(
+          "label",
+          {},
+          h("input", {
+            type: "radio",
+            name: "note-view",
+            value,
+            checked: view === value,
+            onchange: () => {
+              view = value;
+              saveView(view);
+              render();
+            },
+          }),
+          h("span", {}, label),
+        ),
+      ),
+    );
+
+    const inGarden = view === "garden";
+    document.body.classList.toggle("is-garden", inGarden);
+    filterBox.hidden = inGarden;
+    list.hidden = inGarden;
+    footer.hidden = inGarden;
+    gardenHost.hidden = !inGarden;
+    if (inGarden) {
+      if (!garden) {
+        window.scrollTo(0, 0);
+        garden = createGarden(gardenHost, {
+          onOpen: openEdit,
+          todayIso: () => isoOf(new Date()),
+          // chừa phần trên cho ô ghi chú mới và thanh công cụ, để hạt không bay khuất sau chúng
+          topInset: () => toolbar.getBoundingClientRect().bottom - gardenHost.getBoundingClientRect().top,
+        });
+      }
+      // chỉ ghi chú chưa xong và còn hạn (hoặc không có hạn)
+      const today = isoOf(new Date());
+      garden.setNotes(
+        open.filter((n) => !n.due || n.due >= today),
+        notes,
+      );
+      return;
+    }
+    garden?.destroy();
+    garden = null;
+
     const shown = filter === "open" ? open : filter === "done" ? done : notes;
     if (shown.length === 0) {
       const empty =
@@ -279,7 +377,8 @@ export function mount(root: HTMLElement): void {
   }
 
   root.replaceChildren(
-    h("section", { class: "note" }, h("h1", {}, "Ghi chú"), addForm, errorText, filterBox, list, footer),
+    h("section", { class: "note" }, h("h1", {}, "Ghi chú"), addForm, errorText, toolbar, list, footer),
+    gardenHost,
   );
   reload().catch(showError);
   contentInput.focus();

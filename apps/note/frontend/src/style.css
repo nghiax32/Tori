@@ -151,3 +151,85 @@
 .note-footer:empty {
   display: none;
 }
+.note-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+.note-toolbar > :last-child {
+  margin-left: auto;
+}
+.note-dialog-done {
+  margin-right: auto;
+}
+
+/* ---------- chế độ Bồ công anh (dandelion.ts) ---------- */
+/* Bầu trời phủ hết phần dưới header; ô ghi chú mới và thanh công cụ nổi phía trên */
+body.is-garden {
+  overflow: hidden;
+}
+.is-garden .note {
+  position: relative;
+  z-index: 1;
+  pointer-events: none;
+}
+.is-garden .note > * {
+  pointer-events: auto;
+}
+.is-garden .note h1 {
+  pointer-events: none;
+}
+.garden {
+  position: fixed;
+  top: var(--header-height);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+.garden canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: manipulation;
+}
+.garden-tip {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: min(320px, calc(100% - 16px));
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  color: var(--text);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
+.garden-tip small {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--muted);
+  font-size: var(--text-xs);
+  white-space: normal;
+}
+.garden-empty {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  width: min(420px, calc(100% - 32px));
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  color: var(--muted);
+  text-align: center;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
