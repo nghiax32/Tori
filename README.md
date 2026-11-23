@@ -5,7 +5,7 @@ Website cá nhân gồm nhiều mini app dưới một domain:
 - `tori.com`: **hub**, trang chủ liệt kê các app
 - `calendar.tori.com`: **Lịch**, ghi sự kiện và mốc thời gian (sinh nhật, ngày giỗ âm lịch, đi du lịch...)
 - `note.tori.com`: **Ghi chú**, ghi chú nhanh, có thể đặt hạn chót hoặc không, đánh dấu xong khi đã làm
-- `news.tori.com`: **Bản tin**, bản tin quốc tế sáng và tối do Claude tổng hợp, lấy tự động từ Gmail
+- `news.tori.com`: **Bản tin**, do Claude tổng hợp, lấy tự động từ Gmail: Thời sự và Công nghệ buổi sáng, Tổng hợp tuần tối Chủ nhật
 - `learningenglish.tori.com`: **Học Tiếng Anh**, học từ theo chủ đề (ghép cặp, nghe – chép, điền vào câu, từ của ngày), tự lên lịch ôn lại
 - `<app>.tori.com`: các app thêm sau
 

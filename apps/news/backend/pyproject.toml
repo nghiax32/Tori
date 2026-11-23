@@ -1,7 +1,7 @@
 [project]
 name = "news"
 version = "0.1.0"
-description = "Bản tin quốc tế sáng và tối do Claude tổng hợp, lấy tự động từ Gmail"
+description = "Bản tin do Claude tổng hợp, lấy tự động từ Gmail: Thời sự và Công nghệ buổi sáng, Tổng hợp tuần tối Chủ nhật"
 requires-python = ">=3.12"
 dependencies = [
     "httpx>=0.27",

@@ -1,6 +1,6 @@
 name = "news"
 title = "Bản tin"
-description = "Bản tin quốc tế sáng và tối do Claude tổng hợp, lấy tự động từ Gmail"
+description = "Bản tin do Claude tổng hợp, lấy tự động từ Gmail: Thời sự và Công nghệ buổi sáng, Tổng hợp tuần tối Chủ nhật"
 subdomain = "news"
 icon = "📰"
 listed = true
