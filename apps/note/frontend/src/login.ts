@@ -31,9 +31,9 @@ export function renderLogin(root: HTMLElement, cfg: AuthConfig): void {
       h(
         "div",
         { class: "card login-card" },
-        h("div", { class: "login-icon", "aria-hidden": "true" }, "✅"),
-        h("h1", {}, "Việc cần làm"),
-        h("p", { class: "muted" }, "Đăng nhập để lưu danh sách việc cần làm của bạn."),
+        h("div", { class: "login-icon", "aria-hidden": "true" }, "📝"),
+        h("h1", {}, "Ghi chú"),
+        h("p", { class: "muted" }, "Đăng nhập để lưu ghi chú của bạn."),
         failed ? h("p", { class: "error-text" }, "Đăng nhập Google không thành công. Bạn thử lại nhé.") : null,
         cfg.google
           ? h(

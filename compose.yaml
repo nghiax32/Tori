@@ -49,12 +49,12 @@ services:
     volumes:
       - learningenglish_data:/data
 
-  todo:
+  note:
     <<: *app
-    image: ${IMAGE_PREFIX:-tori}-todo:${TAG:-latest}
-    build: { context: ., dockerfile: apps/todo/Dockerfile }
+    image: ${IMAGE_PREFIX:-tori}-note:${TAG:-latest}
+    build: { context: ., dockerfile: apps/note/Dockerfile }
     volumes:
-      - todo_data:/data
+      - note_data:/data
 
   # @new-app-service  (scripts/new_app.py chèn app mới phía trên dòng này)
 
@@ -64,5 +64,5 @@ volumes:
   calendar_data:
   news_data:
   learningenglish_data:
-  todo_data:
+  note_data:
   # @new-app-volume

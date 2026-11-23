@@ -29,8 +29,8 @@
   text-align: left;
 }
 
-/* ---------- danh sách việc ---------- */
-.todo {
+/* ---------- ghi chú ---------- */
+.note {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -38,28 +38,36 @@
   margin: 0 auto;
   padding: var(--space-6) 0;
 }
-.todo h1 {
+.note h1 {
   margin: 0;
   font-size: var(--text-xl);
 }
-.todo .error-text:empty {
+.note .error-text:empty {
   display: none;
 }
-.todo-add {
+.note-add {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--space-2);
-  align-items: center;
   padding: var(--space-3);
 }
-.todo-add > .input {
-  flex: 1 1 260px;
-  min-width: 0;
+.note-add__text,
+.tori-dialog textarea {
+  min-height: 64px;
+  max-height: 50vh;
+  resize: vertical;
+  line-height: 1.5;
 }
-.todo-add .date-input {
-  flex: 0 1 170px;
+.note-add__row {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: flex-end;
 }
-.todo-list {
+.note-add__row .date-input {
+  flex: 0 1 200px;
+}
+.note-list {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -68,25 +76,25 @@
   background: var(--surface);
   overflow: hidden;
 }
-.todo-item {
+.note-item {
   display: flex;
   gap: var(--space-3);
-  align-items: center;
+  align-items: flex-start;
   padding: var(--space-2) var(--space-3);
   border-top: 1px solid var(--border);
 }
-.todo-item:first-child {
+.note-item:first-child {
   border-top: 0;
 }
-.todo-check {
+.note-check {
   flex: none;
   width: 18px;
   height: 18px;
-  margin: 0;
+  margin: 7px 0 0;
   accent-color: var(--accent);
   cursor: pointer;
 }
-.todo-title {
+.note-text {
   flex: 1;
   min-width: 0;
   padding: var(--space-1) 0;
@@ -94,19 +102,22 @@
   background: none;
   color: inherit;
   font: inherit;
+  line-height: 1.5;
   text-align: left;
+  white-space: pre-wrap;
   overflow-wrap: anywhere;
   cursor: pointer;
 }
-.todo-title:hover {
+.note-text:hover {
   color: var(--accent);
 }
-.is-done .todo-title {
+.is-done .note-text {
   color: var(--muted);
   text-decoration: line-through;
 }
 .due {
   flex: none;
+  margin-top: 5px;
   padding: 2px var(--space-2);
   border-radius: 999px;
   background: var(--surface-2);
@@ -122,21 +133,21 @@
   background: var(--danger-soft);
   color: var(--danger);
 }
-.todo-delete {
+.note-delete {
   flex: none;
   color: var(--muted);
 }
-.todo-delete:hover {
+.note-delete:hover {
   color: var(--danger);
 }
-.todo-empty {
+.note-empty {
   padding: var(--space-5) var(--space-3);
   text-align: center;
 }
-.todo-footer {
+.note-footer {
   display: flex;
   justify-content: flex-end;
 }
-.todo-footer:empty {
+.note-footer:empty {
   display: none;
 }

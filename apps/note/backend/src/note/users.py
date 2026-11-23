@@ -8,8 +8,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from tori_core import Identity, get_identity
 
-from todo.db import SessionLocal, get_session
-from todo.models import User
+from note.db import SessionLocal, get_session
+from note.models import User
 
 SessionDep = Annotated[Session, Depends(get_session)]
 

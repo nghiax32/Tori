@@ -18,7 +18,7 @@ async function boot() {
 
   mountHeader(header, {
     hubUrl: meta.hub_url,
-    appName: "Việc cần làm",
+    appName: "Ghi chú",
     user: me,
     onLogout: async () => {
       await api.post("/api/auth/logout");

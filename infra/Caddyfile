@@ -23,7 +23,7 @@
 	reverse_proxy learningenglish:8000
 }
 
-{$TORI_SCHEME}://todo.{$TORI_DOMAIN} {
+{$TORI_SCHEME}://note.{$TORI_DOMAIN} {
 	encode zstd gzip
-	reverse_proxy todo:8000
+	reverse_proxy note:8000
 }

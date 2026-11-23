@@ -3,9 +3,9 @@ from collections.abc import Iterator
 from sqlalchemy.orm import Session, sessionmaker
 from tori_core import make_engine
 
-from todo.models import Base
+from note.models import Base
 
-engine = make_engine("todo")
+engine = make_engine("note")
 SessionLocal = sessionmaker(engine, expire_on_commit=False)
 
 

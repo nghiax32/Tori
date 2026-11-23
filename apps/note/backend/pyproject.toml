@@ -1,7 +1,7 @@
 [project]
-name = "todo"
+name = "note"
 version = "0.1.0"
-description = "Danh sách việc cần làm: thêm việc, đặt hạn chót, đánh dấu xong"
+description = "Ghi chú nhanh, có thể đặt hạn chót hoặc không; đánh dấu xong khi đã làm"
 requires-python = ">=3.12"
 dependencies = ["tori-core", "sqlalchemy>=2.0.36"]
 
@@ -9,7 +9,7 @@ dependencies = ["tori-core", "sqlalchemy>=2.0.36"]
 tori-core = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/todo"]
+packages = ["src/note"]
 
 [build-system]
 requires = ["hatchling"]

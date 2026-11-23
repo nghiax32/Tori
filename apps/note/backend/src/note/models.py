@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import ForeignKey, Index, String, func
+from sqlalchemy import ForeignKey, Index, Text, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -20,15 +20,15 @@ class User(Base):
     last_login_at: Mapped[datetime | None]
 
 
-class Task(Base):
-    """Một việc cần làm của một người."""
+class Note(Base):
+    """Một ghi chú của một người. Hạn chót không bắt buộc."""
 
-    __tablename__ = "tasks"
-    __table_args__ = (Index("ix_tasks_user", "user_id", "done"),)
+    __tablename__ = "notes"
+    __table_args__ = (Index("ix_notes_user", "user_id", "done"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
-    title: Mapped[str] = mapped_column(String(200))
+    content: Mapped[str] = mapped_column(Text)  # nhiều dòng
     due: Mapped[date | None]  # hạn chót, không bắt buộc
     done: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime]

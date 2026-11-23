@@ -4,7 +4,9 @@ Website cá nhân gồm nhiều mini app dưới một domain:
 
 - `tori.com`: **hub**, trang chủ liệt kê các app
 - `calendar.tori.com`: **Lịch**, ghi sự kiện và mốc thời gian (sinh nhật, ngày giỗ âm lịch, đi du lịch...)
+- `note.tori.com`: **Ghi chú**, ghi chú nhanh, có thể đặt hạn chót hoặc không, đánh dấu xong khi đã làm
 - `news.tori.com`: **Bản tin**, bản tin quốc tế sáng và tối do Claude tổng hợp, lấy tự động từ Gmail
+- `learningenglish.tori.com`: **Học Tiếng Anh**, học từ theo chủ đề (ghép cặp, nghe – chép, điền vào câu, từ của ngày), tự lên lịch ôn lại
 - `<app>.tori.com`: các app thêm sau
 
 Mỗi app là một container riêng (FastAPI phục vụ cả API lẫn frontend đã build). Caddy chia
@@ -21,7 +23,9 @@ apps/
     frontend/             # Vite + TypeScript
     Dockerfile
     docs/ideas.md         # ý tưởng chưa làm
+  note/                   # note.tori.com: ghi chú (module Python: note)
   news/                   # news.tori.com: bản tin lấy từ Gmail (module Python: news)
+  learningenglish/        # learningenglish.tori.com: học từ tiếng Anh (module Python: learningenglish)
 packages/
   tori-core/              # Python dùng chung: cấu hình, tạo app, đăng nhập Google, SQLite
   ui/                     # Frontend dùng chung: màu/font (tokens.css), header, dialog, gọi API
@@ -74,7 +78,9 @@ docker compose up -d --build
 
 - Hub: <http://localhost>
 - Lịch: <http://calendar.localhost>
+- Ghi chú: <http://note.localhost>
 - Bản tin: <http://news.localhost> (cần cấu hình Gmail, xem [docs/deploy.md](docs/deploy.md) mục 4b)
+- Học Tiếng Anh: <http://learningenglish.localhost>
 
 Chrome và Firefox tự hiểu `*.localhost` là máy mình. Nếu cổng 80 đã bị chiếm, đặt
 `HTTP_PORT=8080` và `PUBLIC_PORT=8080` trong `.env` rồi mở <http://localhost:8080>.
@@ -85,7 +91,7 @@ riêng (đăng xuất ở hub không đăng xuất calendar). Muốn chạy gi�
 
 ```bash
 # mỗi app một dòng; app mới thì thêm tên vào dòng này
-echo "127.0.0.1 tori.test calendar.tori.test news.tori.test" | sudo tee -a /etc/hosts
+echo "127.0.0.1 tori.test calendar.tori.test note.tori.test news.tori.test learningenglish.tori.test" | sudo tee -a /etc/hosts
 ```
 
 rồi đặt `TORI_DOMAIN=tori.test` trong `.env`, chạy `docker compose up -d` và mở

@@ -2,7 +2,7 @@ import os
 import tempfile
 
 # Phải đặt trước khi import app: DB test nằm ở thư mục tạm, không đụng tới data/ thật.
-os.environ["DATA_DIR"] = tempfile.mkdtemp(prefix="todo-test-")
+os.environ["DATA_DIR"] = tempfile.mkdtemp(prefix="note-test-")
 os.environ["TORI_ENV"] = "dev"
 os.environ["TORI_DOMAIN"] = "localhost"  # không lấy domain trong .env: cookie phải gửi được tới host "testserver"
 os.environ["GOOGLE_CLIENT_ID"] = ""
@@ -26,7 +26,7 @@ def login(c: TestClient, email: str | None = None, name: str | None = None) -> N
 
 @pytest.fixture
 def make_client():
-    from todo.main import app
+    from note.main import app
 
     clients = []
 
