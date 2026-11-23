@@ -182,6 +182,16 @@
   gap: var(--space-2);
   min-width: 0;
 }
+.toolbar__nav {
+  flex-wrap: wrap; /* màn hẹp: nút gạt chế độ một dòng, chọn tháng dòng dưới */
+}
+.toolbar__month {
+  display: flex;
+  flex-wrap: wrap; /* giữ cách xuống dòng như trước khi gói vào khối này (màn hẹp) */
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
 .toolbar__actions {
   flex: 1;
   min-width: auto; /* không bóp nhỏ hơn ô tìm kiếm + nút: thiếu chỗ thì xuống dòng */
@@ -953,4 +963,125 @@ button.agenda__holiday {
     left: 0;
     right: auto;
   }
+}
+
+/* ---------- chế độ String (string-view.ts) ---------- */
+.view-switch {
+  flex: none;
+}
+.string-view {
+  padding: var(--space-4);
+  overflow: hidden;
+}
+.string-view__svg {
+  display: block;
+  font-family: var(--font);
+}
+.string-view__hint,
+.string-view__empty {
+  margin: var(--space-3) 0 0;
+  font-size: var(--text-sm);
+}
+.string-view__empty {
+  margin: var(--space-4) 0;
+  text-align: center;
+}
+.sv-tone-annual {
+  --sv-line: var(--annual-line);
+  --sv-fg: var(--annual-fg);
+}
+.sv-tone-occasional {
+  --sv-line: var(--occ-line);
+  --sv-fg: var(--occ-fg);
+}
+.sv-tone-holiday {
+  --sv-line: var(--holiday-line);
+  --sv-fg: var(--holiday-fg);
+}
+.sv-tone-holiday-off {
+  --sv-line: var(--off-line);
+  --sv-fg: var(--off-fg);
+}
+.sv-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  opacity: 0.6;
+}
+.sv-today-band {
+  fill: var(--accent-soft);
+}
+.sv-today-line {
+  stroke: var(--accent);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 4;
+}
+.sv-day {
+  fill: var(--muted);
+  font-size: 11px;
+  text-anchor: middle;
+}
+.sv-day--today {
+  fill: var(--accent);
+  font-weight: 700;
+}
+.sv-month {
+  fill: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.sv-string {
+  fill: none;
+  stroke: var(--sv-line);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  transition: stroke-width 0.15s;
+}
+.sv-range {
+  stroke: var(--sv-line);
+  stroke-opacity: 0.3;
+  stroke-width: 9;
+  stroke-linecap: round;
+}
+.sv-bead {
+  fill: var(--sv-line);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+.sv-hub {
+  fill: var(--accent);
+  stroke: var(--surface);
+  stroke-width: 3;
+}
+.sv-fray {
+  stroke: var(--sv-line);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+}
+.sv-label {
+  fill: var(--sv-fg);
+  font-size: 12px;
+  text-anchor: middle;
+}
+.sv-name {
+  fill: var(--sv-fg);
+  font-size: 13px;
+  font-weight: 600;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: var(--surface);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+.sv-hit {
+  cursor: pointer;
+  outline: none;
+}
+.sv-hit:hover .sv-string,
+.sv-hit:focus-visible .sv-string {
+  stroke-width: 3;
+}
+.sv-hit:hover .sv-label,
+.sv-hit:focus-visible .sv-label,
+.sv-name:hover {
+  text-decoration: underline;
 }

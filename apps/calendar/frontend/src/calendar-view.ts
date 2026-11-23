@@ -3,6 +3,7 @@ import { fmtRange, monthGrid, spanText, toIso, todayIso, WEEKDAYS } from "./date
 import { loadDraft } from "./draft";
 import { openEventForm } from "./event-form";
 import { openOccurrenceDialog } from "./occurrence-dialog";
+import { renderStringView } from "./string-view";
 import { HOLIDAY_LABEL, KIND_LABEL, type LunarDay, type Occurrence, type TrackedItem, type TrackedList } from "./types";
 
 const WEEKDAY_NAMES = ["Chủ nhật", "Thứ hai", "Thứ ba", "Thứ tư", "Thứ năm", "Thứ sáu", "Thứ bảy"];
@@ -81,6 +82,18 @@ const TONES: { tone: Tone; label: string; swatch: string }[] = [
   { tone: "holiday", label: HOLIDAY_LABEL, swatch: "chip--holiday" },
   { tone: "holiday-off", label: "Nghỉ lễ", swatch: "chip--holiday chip--holiday-off" },
 ];
+type View = "month" | "string";
+const VIEW_KEY = "calendar.view";
+
+/** Chế độ xem đã chọn (Tháng / String), nhớ trong trình duyệt */
+function loadView(): View {
+  try {
+    return localStorage.getItem(VIEW_KEY) === "string" ? "string" : "month";
+  } catch {
+    return "month";
+  }
+}
+
 const TRACKED_FILTER_KEY = "calendar.trackedFilter";
 const TRACKED_FILTER_DEFAULT: Tone[] = ["occasional"];
 
@@ -152,6 +165,11 @@ export class CalendarView {
   // Bộ lọc chung cho hai cột theo dõi (nút "Theo dõi" trên thanh công cụ)
   private readonly trackedFilter = loadTrackedFilter();
   private tracked: TrackedList | null = null;
+  // Chế độ String (string-view.ts) thay cho lịch tháng và hai cột theo dõi
+  private view: View = loadView();
+  private readonly stringPanel = h("section", { class: "string-view card", hidden: true });
+  private calLayout: HTMLElement | null = null;
+  private monthNav: HTMLElement | null = null;
 
   constructor(private readonly root: HTMLElement) {
     const now = new Date();
@@ -243,17 +261,18 @@ export class CalendarView {
       if (!searchBox.contains(e.target as Node) && !(e.target as Element).closest?.("dialog")) showResults(false);
     });
 
+    this.monthNav = h(
+      "div",
+      { class: "toolbar__month" },
+      h("button", { class: "btn", type: "button", onclick: () => this.goToday() }, "Hôm nay"),
+      iconButton(CHEVRON_LEFT, "Tháng trước", () => this.shift(-1)),
+      iconButton(CHEVRON_RIGHT, "Tháng sau", () => this.shift(1)),
+      this.picker,
+    );
     const toolbar = h(
       "div",
       { class: "toolbar" },
-      h(
-        "div",
-        { class: "toolbar__nav" },
-        h("button", { class: "btn", type: "button", onclick: () => this.goToday() }, "Hôm nay"),
-        iconButton(CHEVRON_LEFT, "Tháng trước", () => this.shift(-1)),
-        iconButton(CHEVRON_RIGHT, "Tháng sau", () => this.shift(1)),
-        this.picker,
-      ),
+      h("div", { class: "toolbar__nav" }, this.viewSwitch(), this.monthNav),
       h(
         "div",
         { class: "toolbar__actions" },
@@ -278,21 +297,83 @@ export class CalendarView {
         { class: "page" },
         toolbar,
         this.error,
-        h(
+        (this.calLayout = h(
           "div",
           { class: "cal-layout" },
           this.pastPanel,
           h("div", { class: "cal-main" }, this.grid, legend, this.agenda),
           this.upcomingPanel,
-        ),
+        )),
+        this.stringPanel,
       ),
     );
+    this.applyView();
+    // Khung đổi bề rộng (xoay điện thoại, kéo cửa sổ) thì vẽ lại trục ngày cho vừa
+    let lastWidth = 0;
+    new ResizeObserver(() => {
+      const w = this.stringPanel.clientWidth;
+      if (w && w !== lastWidth) {
+        lastWidth = w;
+        this.renderString();
+      }
+    }).observe(this.stringPanel);
     void this.reload();
 
     // Form đang điền dở trước khi F5
     const draft = loadDraft();
     if (draft?.form === "add") openEventForm({ draft, onSaved: () => void this.reload() });
     else if (draft?.form === "occ") openOccurrenceDialog(draft.occ, { draft, onChanged: () => void this.reload() });
+  }
+
+  /** Nút gạt chế độ xem: Tháng / String */
+  private viewSwitch(): HTMLElement {
+    const options: [View, string, string][] = [
+      ["month", "📅 Tháng", "Lịch tháng"],
+      ["string", "🧵 String", "Sợi chỉ tới sự kiện đang theo dõi, 15 ngày trước và sau hôm nay"],
+    ];
+    return h(
+      "div",
+      { class: "segmented view-switch", role: "radiogroup", "aria-label": "Chế độ xem" },
+      ...options.map(([value, label, title]) =>
+        h(
+          "label",
+          { title },
+          h("input", {
+            type: "radio",
+            name: "calendar-view",
+            value,
+            checked: this.view === value,
+            onchange: () => {
+              this.view = value;
+              try {
+                localStorage.setItem(VIEW_KEY, value);
+              } catch {
+                // không lưu được thì chỉ áp dụng cho lần xem này
+              }
+              this.applyView();
+            },
+          }),
+          h("span", {}, label),
+        ),
+      ),
+    );
+  }
+
+  private applyView(): void {
+    const isString = this.view === "string";
+    if (this.calLayout) this.calLayout.hidden = isString;
+    if (this.monthNav) this.monthNav.hidden = isString;
+    this.stringPanel.hidden = !isString;
+    this.renderString();
+  }
+
+  private renderString(): void {
+    if (this.view !== "string" || !this.tracked || this.stringPanel.hidden) return;
+    renderStringView(this.stringPanel, this.tracked, {
+      tone,
+      shown: (o) => this.trackedFilter.has(tone(o)),
+      open: (o) => this.openOcc(o),
+    });
   }
 
   /** Ghi tháng đang xem và ô tìm kiếm lên URL; giá trị mặc định (tháng hiện tại, năm nay, ô trống) thì bỏ tham số */
@@ -533,7 +614,7 @@ export class CalendarView {
     const details = h(
       "details",
       { class: "tracked-filter" },
-      h("summary", { class: "btn", title: "Chọn loại sự kiện hiện ở cột Đã qua / Sắp tới" }, "Theo dõi ", count),
+      h("summary", { class: "btn", title: "Chọn loại sự kiện hiện ở cột Đã qua / Sắp tới và chế độ String" }, "Theo dõi ", count),
       menu,
     ) as HTMLDetailsElement;
     syncCount();
@@ -583,6 +664,7 @@ export class CalendarView {
     };
     fill(this.pastPanel, "Đã qua", data.past, false, "Chưa có sự kiện theo dõi nào đã qua.");
     fill(this.upcomingPanel, "Sắp tới", data.upcoming, true, "Chưa có. Tích “Theo dõi” khi thêm hoặc sửa sự kiện.");
+    this.renderString();
   }
 
   private renderResults(found: Occurrence[] | null): void {
